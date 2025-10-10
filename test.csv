@@ -1,0 +1,11 @@
+SMARTS,Description
+[N;X3;v3](=O)[O;X1],Nitro group
+C(=O)Cl,Acyl chloride
+C(=O)C(=O),Alpha-dicarbonyl
+[S;X2]S,Disulfide
+[C;X3](=[O;X1])[O;X2][H],Carboxylic acid
+c1ccccc1,Benzene ring
+[NX3;H2,H1;!$(NC=O)],Primary or secondary amine (not amide)
+[CX3](=O)[OX2H0][CX3](=O),Anhydride
+C[N+](C)(C)C,Quaternary ammonium
+[Br,Cl,I][CX4;H1,H2],Alkyl halide
