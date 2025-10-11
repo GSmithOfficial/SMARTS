@@ -13,15 +13,12 @@ st.set_page_config(page_title="SMARTS Toolkit", layout="wide", initial_sidebar_s
 # Custom CSS for compact layout
 st.markdown("""
 <style>
-    /* Reduce padding and margins */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 0rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
-    
-    /* Compact metrics */
     [data-testid="stMetric"] {
         background-color: #f0f2f6;
         padding: 0.3rem 0.5rem;
@@ -33,14 +30,10 @@ st.markdown("""
     [data-testid="stMetricValue"] {
         font-size: 1rem;
     }
-    
-    /* Compact buttons */
     .stButton button {
         padding: 0.25rem 0.5rem;
         font-size: 0.85rem;
     }
-    
-    /* Smaller headers */
     h1 {
         font-size: 1.5rem;
         margin-bottom: 0.5rem;
@@ -53,20 +46,11 @@ st.markdown("""
         font-size: 1rem;
         margin-bottom: 0.3rem;
     }
-    
-    /* Compact file uploader */
     [data-testid="stFileUploader"] {
         padding: 0.5rem;
     }
-    
-    /* Reduce spacing between elements */
     .element-container {
         margin-bottom: 0.5rem;
-    }
-    
-    /* Compact sidebar */
-    .css-1d391kg {
-        padding: 1rem 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,6 +70,8 @@ if 'api_key' not in st.session_state:
     st.session_state.api_key = ""
 if 'viz_cache' not in st.session_state:
     st.session_state.viz_cache = {}
+if 'filter_results' not in st.session_state:
+    st.session_state.filter_results = None
 
 # Helper function for SMARTS.plus visualization
 def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
@@ -144,15 +130,12 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
     except:
         return None
 
-# Compact header
-col_title, col_mode = st.columns([3, 2])
-with col_title:
-    st.title("🔬 SMARTS Toolkit")
-with col_mode:
-    mode = st.radio("Mode:", ["Visualizer", "Validator"], horizontal=True, label_visibility="collapsed")
-    st.session_state.mode = mode
+# Header
+st.title("🔬 SMARTS Toolkit")
+mode = st.radio("Select Mode:", ["Visualizer", "Validator", "Gen AI Filter"], horizontal=True, key="mode_selector")
+st.session_state.mode = mode
 
-# Settings expander (collapsed by default)
+# Settings expander
 with st.expander("⚙️ Settings", expanded=False):
     col_s1, col_s2 = st.columns(2)
     with col_s1:
@@ -179,7 +162,6 @@ st.divider()
 # ============================================================================
 
 if mode == "Visualizer":
-    # Compact file upload
     uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
     
     if uploaded_file:
@@ -200,10 +182,8 @@ if mode == "Visualizer":
         current = st.session_state.current_idx
         progress = len(st.session_state.decisions) / total if total > 0 else 0
         
-        # Compact progress bar
         st.progress(progress, text=f"Pattern {current + 1}/{total}")
         
-        # Compact metrics
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.metric("✓", f"{len(st.session_state.decisions)}/{total}", label_visibility="collapsed")
@@ -216,28 +196,23 @@ if mode == "Visualizer":
         with col5:
             st.metric("🔴", sum(1 for d in st.session_state.decisions.values() if d == "Red"), label_visibility="collapsed")
         
-        st.write("")  # Small spacer
+        st.write("")
         
         if current < total:
-            # Main layout - tighter columns
             col_main, col_side = st.columns([2.5, 1])
             
             with col_main:
                 smarts_pattern = df.iloc[current]['SMARTS']
-                
-                # Pattern display
                 st.code(smarts_pattern, language='text')
                 
                 if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
                     st.caption(df.iloc[current]['Description'])
                 
-                # Visualization
                 try:
                     pattern = Chem.MolFromSmarts(smarts_pattern)
                     if pattern is None:
                         st.error("⚠️ Invalid SMARTS")
                     else:
-                        # Try SMARTS.plus
                         image_displayed = False
                         if use_smartsplus and st.session_state.api_key:
                             smartsplus_image = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
@@ -246,7 +221,6 @@ if mode == "Visualizer":
                                 st.caption("🎨 SMARTS.plus")
                                 image_displayed = True
                         
-                        # Fallback to RDKit
                         if not image_displayed:
                             img = Draw.MolToImage(pattern, size=(350, 280))
                             st.image(img, width=350)
@@ -254,12 +228,10 @@ if mode == "Visualizer":
                     st.error(f"Error: {str(e)}")
             
             with col_side:
-                # Current status
                 if current in st.session_state.decisions:
                     color_map = {"OK": "🟢", "Yellow": "🟡", "Amber": "🟠", "Red": "🔴"}
                     st.info(f"{color_map.get(st.session_state.decisions[current], '')} {st.session_state.decisions[current]}")
                 
-                # Decision buttons - 2x2 grid
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
                     if st.button("🟢 OK", use_container_width=True, key="ok"):
@@ -286,7 +258,6 @@ if mode == "Visualizer":
                 
                 st.write("")
                 
-                # Navigation
                 col_n1, col_n2 = st.columns(2)
                 with col_n1:
                     if st.button("⬅️", disabled=(current == 0), use_container_width=True):
@@ -297,7 +268,6 @@ if mode == "Visualizer":
                         st.session_state.current_idx += 1
                         st.rerun()
                 
-                # Jump to
                 jump_to = st.number_input("Go to #", 1, total, current + 1, key='jump', label_visibility="collapsed")
                 if st.button("Jump", use_container_width=True):
                     st.session_state.current_idx = jump_to - 1
@@ -306,7 +276,6 @@ if mode == "Visualizer":
         else:
             st.success("🎉 Review complete!")
         
-        # Export (collapsible)
         if len(st.session_state.decisions) > 0:
             with st.expander("📥 Export Results"):
                 results_df = df.copy()
@@ -340,7 +309,6 @@ elif mode == "Validator":
     with col_u2:
         molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
     
-    # Load files
     if smarts_file and st.session_state.smarts_data is None:
         try:
             if smarts_file.name.endswith('.csv'):
@@ -467,3 +435,211 @@ elif mode == "Validator":
     
     else:
         st.info("Upload both SMARTS and molecules to begin")
+
+# ============================================================================
+# MODE 3: GEN AI FILTER (NEW!)
+# ============================================================================
+
+elif mode == "Gen AI Filter":
+    st.subheader("🧬 Batch Filter Gen AI Output")
+    
+    col_u1, col_u2 = st.columns(2)
+    with col_u1:
+        filter_smarts_file = st.file_uploader(
+            "📁 Approved SMARTS (CSV from Visualizer)",
+            type=['csv'],
+            key='filter_smarts',
+            help="Upload CSV with 'Decision' column (from Visualizer export)"
+        )
+    with col_u2:
+        gen_ai_file = st.file_uploader(
+            "📁 Gen AI Molecules (SDF or CSV)",
+            type=['sdf', 'csv'],
+            key='gen_ai_mols',
+            help="SDF with molecules or CSV with SMILES column"
+        )
+    
+    # Filter severity selector
+    filter_severity = st.multiselect(
+        "Apply patterns with these decisions:",
+        ["Red", "Amber", "Yellow", "OK"],
+        default=["Red", "Amber"],
+        help="Which traffic light categories to use as filters"
+    )
+    
+    # Load filter patterns
+    filter_patterns = None
+    if filter_smarts_file:
+        try:
+            filter_df = pd.read_csv(filter_smarts_file)
+            
+            # Check if Decision column exists
+            if 'Decision' not in filter_df.columns:
+                st.warning("No 'Decision' column found. Using all patterns.")
+                filter_patterns = filter_df
+            else:
+                # Filter by selected severities
+                filter_patterns = filter_df[filter_df['Decision'].isin(filter_severity)]
+                st.info(f"✅ Loaded {len(filter_patterns)} filter patterns ({', '.join(filter_severity)})")
+                
+        except Exception as e:
+            st.error(f"Error loading SMARTS: {str(e)}")
+    
+    # Load molecules
+    gen_ai_mols = None
+    if gen_ai_file:
+        try:
+            if gen_ai_file.name.endswith('.sdf'):
+                # Load SDF
+                gen_ai_mols = PandasTools.LoadSDF(gen_ai_file, molColName='Mol')
+                st.success(f"✅ Loaded {len(gen_ai_mols)} molecules from SDF")
+            else:
+                # Load CSV with SMILES
+                gen_ai_mols = pd.read_csv(gen_ai_file)
+                smiles_col = 'SMILES' if 'SMILES' in gen_ai_mols.columns else gen_ai_mols.columns[0]
+                gen_ai_mols['Mol'] = gen_ai_mols[smiles_col].apply(
+                    lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
+                )
+                gen_ai_mols = gen_ai_mols[gen_ai_mols['Mol'].notna()]
+                st.success(f"✅ Loaded {len(gen_ai_mols)} molecules from CSV")
+                
+        except Exception as e:
+            st.error(f"Error loading molecules: {str(e)}")
+    
+    # Run filtering
+    if filter_patterns is not None and gen_ai_mols is not None and len(filter_patterns) > 0:
+        
+        if st.button("🚀 Run Batch Filter", type="primary", use_container_width=True):
+            
+            with st.spinner("Filtering molecules..."):
+                
+                # Compile SMARTS patterns
+                compiled_patterns = []
+                for idx, row in filter_patterns.iterrows():
+                    smarts = row['SMARTS']
+                    pattern = Chem.MolFromSmarts(smarts)
+                    if pattern:
+                        compiled_patterns.append({
+                            'pattern': pattern,
+                            'smarts': smarts,
+                            'description': row.get('Description', ''),
+                            'decision': row.get('Decision', 'Unknown')
+                        })
+                
+                # Filter molecules
+                passed = []
+                failed = []
+                rejection_reasons = []
+                
+                for idx, row in gen_ai_mols.iterrows():
+                    mol = row.get('Mol') or row.get('ROMol')
+                    if mol is None:
+                        continue
+                    
+                    caught_by = []
+                    for p in compiled_patterns:
+                        if mol.HasSubstructMatch(p['pattern']):
+                            caught_by.append(p)
+                    
+                    if len(caught_by) == 0:
+                        passed.append(idx)
+                    else:
+                        failed.append(idx)
+                        rejection_reasons.append({
+                            'molecule_idx': idx,
+                            'num_violations': len(caught_by),
+                            'patterns': [p['smarts'] for p in caught_by],
+                            'descriptions': [p['description'] for p in caught_by]
+                        })
+                
+                # Store results
+                st.session_state.filter_results = {
+                    'passed': passed,
+                    'failed': failed,
+                    'rejection_reasons': rejection_reasons,
+                    'total': len(gen_ai_mols),
+                    'patterns_used': len(compiled_patterns)
+                }
+    
+    # Display results
+    if st.session_state.filter_results:
+        results = st.session_state.filter_results
+        
+        st.write("---")
+        st.subheader("📊 Filtering Results")
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Molecules", results['total'])
+        with col2:
+            st.metric("✅ Passed", len(results['passed']), 
+                     delta=f"{len(results['passed'])/results['total']*100:.1f}%")
+        with col3:
+            st.metric("❌ Failed", len(results['failed']),
+                     delta=f"{len(results['failed'])/results['total']*100:.1f}%")
+        with col4:
+            st.metric("Filters Used", results['patterns_used'])
+        
+        # Export buttons
+        st.write("")
+        col_e1, col_e2 = st.columns(2)
+        
+        with col_e1:
+            # Export passed molecules
+            if len(results['passed']) > 0:
+                passed_mols = gen_ai_mols.iloc[results['passed']].copy()
+                
+                # Create export dataframe
+                if 'SMILES' in passed_mols.columns:
+                    export_df = passed_mols[['SMILES']].copy()
+                else:
+                    # Generate SMILES from Mol objects
+                    export_df = pd.DataFrame({
+                        'SMILES': passed_mols['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')
+                    })
+                
+                # Add other columns if they exist
+                for col in gen_ai_mols.columns:
+                    if col not in ['Mol', 'ROMol', 'SMILES'] and col in passed_mols.columns:
+                        export_df[col] = passed_mols[col].values
+                
+                st.download_button(
+                    "📥 Download Passed Molecules",
+                    export_df.to_csv(index=False),
+                    "passed_molecules.csv",
+                    "text/csv",
+                    use_container_width=True,
+                    type="primary"
+                )
+        
+        with col_e2:
+            # Export rejection report
+            if len(results['failed']) > 0:
+                rejection_df = pd.DataFrame(results['rejection_reasons'])
+                
+                st.download_button(
+                    "📥 Download Rejection Report",
+                    rejection_df.to_csv(index=False),
+                    "rejection_report.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        
+        # Show sample rejections
+        if len(results['failed']) > 0:
+            with st.expander(f"🔍 View Sample Rejections (first 5 of {len(results['failed'])})"):
+                for i, reason in enumerate(results['rejection_reasons'][:5]):
+                    st.write(f"**Molecule {reason['molecule_idx']}** - Caught by {reason['num_violations']} pattern(s):")
+                    for j, (pattern, desc) in enumerate(zip(reason['patterns'], reason['descriptions'])):
+                        st.text(f"  • {pattern}")
+                        if desc:
+                            st.caption(f"    {desc}")
+                    if i < 4:
+                        st.divider()
+    
+    elif filter_patterns is not None and gen_ai_mols is not None and len(filter_patterns) == 0:
+        st.warning("No patterns selected. Choose at least one decision category to filter.")
+    
+    else:
+        st.info("Upload both approved SMARTS patterns and Gen AI molecules, then click 'Run Batch Filter'")
