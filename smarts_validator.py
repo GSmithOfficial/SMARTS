@@ -3,6 +3,9 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Draw, PandasTools
 import io
+import requests
+import base64
+import time
 
 # Page config
 st.set_page_config(page_title="SMARTS Toolkit", layout="wide")
@@ -18,9 +21,113 @@ if 'smarts_data' not in st.session_state:
     st.session_state.smarts_data = None
 if 'test_molecules' not in st.session_state:
     st.session_state.test_molecules = None
+if 'api_key' not in st.session_state:
+    st.session_state.api_key = ""
+if 'viz_cache' not in st.session_state:
+    st.session_state.viz_cache = {}
+
+# Helper function for SMARTS.plus visualization
+def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
+    """Get visualization from SMARTS.plus API"""
+    
+    # Check cache first
+    cache_key = f"{smarts_pattern}_{api_key[:8]}"
+    if use_cache and cache_key in st.session_state.viz_cache:
+        return st.session_state.viz_cache[cache_key]
+    
+    try:
+        # POST request to submit job
+        payload = {
+            "query": {
+                "smarts": smarts_pattern,
+                "parameters": {
+                    "file_format": "png",
+                    "visualization_mode": 0,  # Complete Visualization
+                    "legend_mode": 1,  # Dynamic legend
+                    "smarts_string_into_picture": True,
+                    "visualization_of_default_bonds": 0
+                }
+            }
+        }
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'X-API-Key': api_key
+        }
+        
+        # Submit job
+        response = requests.post(
+            'https://api.smarts.plus/smartsView/',
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 202:
+            # Job queued, get job_id
+            job_id = response.json().get('job_id')
+            
+            # Poll for result (max 5 times)
+            for _ in range(5):
+                time.sleep(1)
+                result_response = requests.get(
+                    f'https://api.smarts.plus/smartsView/?job_id={job_id}',
+                    timeout=10
+                )
+                
+                if result_response.status_code == 200:
+                    result = result_response.json()
+                    if 'result' in result and 'image' in result['result']:
+                        # Decode base64 image
+                        image_data = base64.b64decode(result['result']['image'])
+                        # Cache it
+                        st.session_state.viz_cache[cache_key] = image_data
+                        return image_data
+                    elif 'result' in result and 'error' in result['result']:
+                        return None  # Error in processing
+        
+        elif response.status_code == 200:
+            # Job completed immediately
+            result = response.json()
+            if 'result' in result and 'image' in result['result']:
+                image_data = base64.b64decode(result['result']['image'])
+                st.session_state.viz_cache[cache_key] = image_data
+                return image_data
+        
+        return None
+        
+    except Exception as e:
+        st.warning(f"SMARTS.plus API error: {str(e)}")
+        return None
 
 # Title and mode selector
 st.title("🔬 SMARTS Analysis Toolkit")
+
+# Sidebar for settings
+with st.sidebar:
+    st.subheader("⚙️ Settings")
+    
+    # API Key input
+    api_key_input = st.text_input(
+        "SMARTS.plus API Key (optional)",
+        type="password",
+        value=st.session_state.api_key,
+        help="Get your free API key at https://smarts.plus/sign_up"
+    )
+    
+    if api_key_input != st.session_state.api_key:
+        st.session_state.api_key = api_key_input
+        st.session_state.viz_cache = {}  # Clear cache on key change
+    
+    use_smartsplus = st.checkbox(
+        "Use SMARTS.plus visualization",
+        value=bool(st.session_state.api_key),
+        disabled=not bool(st.session_state.api_key),
+        help="Professional SMARTS visualization (requires API key)"
+    )
+    
+    if not st.session_state.api_key:
+        st.info("💡 Get a free API key at [smarts.plus](https://smarts.plus/sign_up) for better visualizations!")
 
 mode = st.radio(
     "Select Mode:",
@@ -105,13 +212,28 @@ if mode == "Visualizer":
                     else:
                         st.success("✅ Valid SMARTS syntax")
                         
-                        # Draw the SMARTS pattern itself
+                        # Draw the SMARTS pattern
                         st.write("**Visual representation:**")
-                        try:
-                            img = Draw.MolToImage(pattern, size=(450, 350))
-                            st.image(img, use_container_width=False)
-                        except Exception as draw_error:
-                            st.warning(f"Could not generate image: {str(draw_error)}")
+                        
+                        # Try SMARTS.plus first if enabled
+                        image_displayed = False
+                        if use_smartsplus and st.session_state.api_key:
+                            with st.spinner("Fetching from SMARTS.plus..."):
+                                smartsplus_image = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
+                                if smartsplus_image:
+                                    st.image(smartsplus_image, use_container_width=False)
+                                    st.caption("🎨 Powered by SMARTS.plus")
+                                    image_displayed = True
+                        
+                        # Fallback to RDKit if SMARTS.plus failed or not enabled
+                        if not image_displayed:
+                            try:
+                                img = Draw.MolToImage(pattern, size=(450, 350))
+                                st.image(img, use_container_width=False)
+                                if use_smartsplus and st.session_state.api_key:
+                                    st.caption("⚠️ SMARTS.plus unavailable, using RDKit fallback")
+                            except Exception as draw_error:
+                                st.warning(f"Could not generate image: {str(draw_error)}")
                             
                 except Exception as e:
                     st.error(f"Error processing SMARTS: {str(e)}")
@@ -356,7 +478,10 @@ elif mode == "Validator":
                                         img = Draw.MolToImage(mol, size=(200, 200), 
                                                              highlightAtoms=mol.GetSubstructMatch(pattern))
                                         st.image(img)
-                                        st.caption(f"Mol {idx}")
+                                        if 'Name' in mol_df.columns:
+                                            st.caption(mol_df.iloc[idx]['Name'])
+                                        else:
+                                            st.caption(f"Mol {idx}")
                                     except:
                                         st.write(f"Mol {idx}")
                         else:
