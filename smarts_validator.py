@@ -87,7 +87,7 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
             "query": {
                 "smarts": smarts_pattern,
                 "parameters": {
-                    "file_format": "png",
+                    "file_format": "svg",  # Changed from "png" for vector quality
                     "visualization_mode": 0,
                     "legend_mode": 1,
                     "smarts_string_into_picture": True,
@@ -119,15 +119,15 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
                 if result_response.status_code == 200:
                     result = result_response.json()
                     if 'result' in result and 'image' in result['result']:
-                        image_data = base64.b64decode(result['result']['image'])
-                        st.session_state.viz_cache[cache_key] = image_data
-                        return image_data
+                        svg_data = result['result']['image']  # SVG returned as string, not base64
+                        st.session_state.viz_cache[cache_key] = svg_data
+                        return svg_data
         elif response.status_code == 200:
             result = response.json()
             if 'result' in result and 'image' in result['result']:
-                image_data = base64.b64decode(result['result']['image'])
-                st.session_state.viz_cache[cache_key] = image_data
-                return image_data
+                svg_data = result['result']['image']  # SVG returned as string, not base64
+                st.session_state.viz_cache[cache_key] = svg_data
+                return svg_data
         return None
     except:
         return None
@@ -221,10 +221,10 @@ if mode == "Visualizer":
                     else:
                         image_displayed = False
                         if use_smartsplus and st.session_state.api_key:
-                            smartsplus_image = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
-                            if smartsplus_image:
-                                st.image(smartsplus_image, width=400)
-                                st.caption("🎨 SMARTS.plus")
+                            smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
+                            if smartsplus_svg:
+                                st.markdown(smartsplus_svg, unsafe_allow_html=True)
+                                st.caption("🎨 SMARTS.plus (Vector)")
                                 image_displayed = True
                         
                         if not image_displayed:
