@@ -72,8 +72,8 @@ if 'viz_cache' not in st.session_state:
     st.session_state.viz_cache = {}
 if 'filter_results' not in st.session_state:
     st.session_state.filter_results = None
-if 'last_uploaded_file' not in st.session_state:
-    st.session_state.last_uploaded_file = None
+if 'uploaded_file_name' not in st.session_state:
+    st.session_state.uploaded_file_name = None
 
 # Helper function for SMARTS.plus visualization
 def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
@@ -164,21 +164,13 @@ st.divider()
 # ============================================================================
 
 if mode == "Visualizer":
-    col_upload, col_reset = st.columns([4, 1])
-    with col_upload:
-        uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
-    with col_reset:
-        if st.button("🔄 Reset", help="Clear current data and start fresh", use_container_width=True):
-            st.session_state.smarts_data = None
-            st.session_state.last_uploaded_file = None
-            st.session_state.current_idx = 0
-            st.session_state.decisions = {}
-            st.rerun()
+    uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
     
     if uploaded_file:
-        # Detect if a new file was uploaded
-        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-        if st.session_state.last_uploaded_file != file_id or st.session_state.smarts_data is None:
+        # Check if this is a new file
+        current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+        
+        if st.session_state.uploaded_file_name != current_file_id:
             try:
                 df = pd.read_csv(uploaded_file)
                 if 'SMARTS' not in df.columns:
@@ -186,7 +178,7 @@ if mode == "Visualizer":
                 st.session_state.smarts_data = df
                 st.session_state.current_idx = 0
                 st.session_state.decisions = {}
-                st.session_state.last_uploaded_file = file_id
+                st.session_state.uploaded_file_name = current_file_id
             except Exception as e:
                 st.error(f"Parse error: {str(e)}")
                 st.stop()
@@ -654,9 +646,6 @@ elif mode == "Gen AI Filter":
     
     elif filter_patterns is not None and gen_ai_mols is not None and len(filter_patterns) == 0:
         st.warning("No patterns selected. Choose at least one decision category to filter.")
-    
-    else:
-        st.info("Upload both approved SMARTS patterns and Gen AI molecules, then click 'Run Batch Filter'")
     
     else:
         st.info("Upload both approved SMARTS patterns and Gen AI molecules, then click 'Run Batch Filter'")
