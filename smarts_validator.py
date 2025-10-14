@@ -231,20 +231,15 @@ if mode == "Visualizer":
                         if use_smartsplus and st.session_state.api_key:
                             smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
                             if smartsplus_svg:
-                                # Make SVG responsive by wrapping and adding CSS
+                                # Remove width/height attributes so viewBox controls scaling
+                                import re
+                                svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
+                                svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
+                                
+                                # Wrap in 800px container
                                 scaled_svg = f"""
-                                <style>
-                                    .smarts-svg-container {{
-                                        width: 800px;
-                                        max-width: 100%;
-                                    }}
-                                    .smarts-svg-container svg {{
-                                        width: 100% !important;
-                                        height: auto !important;
-                                    }}
-                                </style>
-                                <div class="smarts-svg-container">
-                                    {smartsplus_svg}
+                                <div style="width: 800px; max-width: 100%;">
+                                    {svg_fixed}
                                 </div>
                                 """
                                 st.markdown(scaled_svg, unsafe_allow_html=True)
