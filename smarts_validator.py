@@ -77,8 +77,8 @@ if 'uploaded_file_name' not in st.session_state:
 
 # Helper function for SMARTS.plus visualization
 def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
-    """Get visualization from SMARTS.plus API"""
-    cache_key = f"{smarts_pattern}_{api_key[:8]}"
+    """Get visualization from SMARTS.plus API - returns SVG string"""
+    cache_key = f"{smarts_pattern}_{api_key[:8]}_svg"
     if use_cache and cache_key in st.session_state.viz_cache:
         return st.session_state.viz_cache[cache_key]
     
@@ -87,7 +87,7 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
             "query": {
                 "smarts": smarts_pattern,
                 "parameters": {
-                    "file_format": "svg",  # Changed from "png" for vector quality
+                    "file_format": "svg",  # Use SVG for vector quality
                     "visualization_mode": 0,
                     "legend_mode": 1,
                     "smarts_string_into_picture": True,
@@ -119,17 +119,20 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
                 if result_response.status_code == 200:
                     result = result_response.json()
                     if 'result' in result and 'image' in result['result']:
-                        svg_data = result['result']['image']  # SVG returned as string, not base64
+                        svg_data = result['result']['image']
                         st.session_state.viz_cache[cache_key] = svg_data
                         return svg_data
         elif response.status_code == 200:
             result = response.json()
             if 'result' in result and 'image' in result['result']:
-                svg_data = result['result']['image']  # SVG returned as string, not base64
+                svg_data = result['result']['image']
                 st.session_state.viz_cache[cache_key] = svg_data
                 return svg_data
         return None
-    except:
+    except Exception as e:
+        # Show error in debug mode
+        if st.session_state.get('debug_mode', False):
+            st.error(f"SMARTS.plus error: {str(e)}")
         return None
 
 # Header
@@ -156,6 +159,11 @@ with st.expander("⚙️ Settings", expanded=False):
             value=bool(st.session_state.api_key),
             disabled=not bool(st.session_state.api_key)
         )
+        st.session_state.debug_mode = st.checkbox(
+            "Debug mode",
+            value=False,
+            help="Show SMARTS.plus API errors"
+        )
 
 st.divider()
 
@@ -167,7 +175,7 @@ if mode == "Visualizer":
     uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
     
     if uploaded_file:
-        # Check if this is a new file
+        # Detect new file uploads
         current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
         
         if st.session_state.uploaded_file_name != current_file_id:
@@ -223,8 +231,9 @@ if mode == "Visualizer":
                         if use_smartsplus and st.session_state.api_key:
                             smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
                             if smartsplus_svg:
+                                # Render SVG directly in markdown
                                 st.markdown(smartsplus_svg, unsafe_allow_html=True)
-                                st.caption("🎨 SMARTS.plus (Vector)")
+                                st.caption("🎨 SMARTS.plus")
                                 image_displayed = True
                         
                         if not image_displayed:
