@@ -142,7 +142,7 @@ st.session_state.mode = mode
 
 # Settings expander
 with st.expander("⚙️ Settings", expanded=False):
-    col_s1, col_s2 = st.columns(2)
+    col_s1, col_s2, col_s3 = st.columns(3)
     with col_s1:
         api_key_input = st.text_input(
             "SMARTS.plus API Key",
@@ -164,6 +164,18 @@ with st.expander("⚙️ Settings", expanded=False):
             value=False,
             help="Show SMARTS.plus API errors"
         )
+    with col_s3:
+        if 'svg_width' not in st.session_state:
+            st.session_state.svg_width = 600
+        svg_width = st.slider(
+            "Image width (px)",
+            min_value=300,
+            max_value=1200,
+            value=st.session_state.svg_width,
+            step=50,
+            help="Adjust SMARTS.plus image size"
+        )
+        st.session_state.svg_width = svg_width
 
 st.divider()
 
@@ -231,8 +243,14 @@ if mode == "Visualizer":
                         if use_smartsplus and st.session_state.api_key:
                             smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
                             if smartsplus_svg:
-                                # Render SVG directly in markdown
-                                st.markdown(smartsplus_svg, unsafe_allow_html=True)
+                                # Use adjustable width from settings
+                                svg_width = st.session_state.get('svg_width', 600)
+                                scaled_svg = f"""
+                                <div style="max-width: {svg_width}px; width: 100%;">
+                                    {smartsplus_svg}
+                                </div>
+                                """
+                                st.markdown(scaled_svg, unsafe_allow_html=True)
                                 st.caption("🎨 SMARTS.plus")
                                 image_displayed = True
                         
