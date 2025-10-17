@@ -6,300 +6,58 @@ import io
 import requests
 import base64
 import time
-import json
-from datetime import datetime
 
 # Page config
-st.set_page_config(
-    page_title="SMARTS Toolkit Pro", 
-    layout="wide", 
-    initial_sidebar_state="collapsed",
-    page_icon="🧬"
-)
+st.set_page_config(page_title="SMARTS Toolkit", layout="wide", initial_sidebar_state="collapsed")
 
-# ============================================================================
-# PROFESSIONAL DESIGN SYSTEM
-# ============================================================================
-
+# Custom CSS for compact layout
 st.markdown("""
 <style>
-    /* Global Styles */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 0rem;
         padding-left: 2rem;
         padding-right: 2rem;
     }
-    
-    /* Professional Status Badges */
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .status-pass {
-        background: #D1FAE5;
-        color: #065F46;
-        border: 1px solid #10B981;
-    }
-    
-    .status-review {
-        background: #FEF3C7;
-        color: #92400E;
-        border: 1px solid #F59E0B;
-    }
-    
-    .status-concern {
-        background: #FED7AA;
-        color: #9A3412;
-        border: 1px solid #F97316;
-    }
-    
-    .status-block {
-        background: #FEE2E2;
-        color: #991B1B;
-        border: 1px solid #EF4444;
-    }
-    
-    /* Metric Cards */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 0.75rem;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-    }
-    
-    .metric-card-value {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-    }
-    
-    .metric-card-label {
-        font-size: 0.875rem;
-        opacity: 0.9;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    /* Dashboard Cards */
-    .dashboard-card {
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        transition: box-shadow 0.2s;
-    }
-    
-    .dashboard-card:hover {
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    .dashboard-card-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        color: #1F2937;
-    }
-    
-    .dashboard-card-subtitle {
-        font-size: 0.875rem;
-        color: #6B7280;
-        margin-bottom: 1rem;
-    }
-    
-    /* Progress Bar */
-    .custom-progress {
-        background: #E5E7EB;
-        border-radius: 1rem;
-        height: 0.5rem;
-        overflow: hidden;
-    }
-    
-    .custom-progress-bar {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        height: 100%;
-        transition: width 0.3s ease;
-    }
-    
-    /* Compact Metrics */
     [data-testid="stMetric"] {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        border: 1px solid #E5E7EB;
+        background-color: #f0f2f6;
+        padding: 0.3rem 0.5rem;
+        border-radius: 0.3rem;
     }
-    
     [data-testid="stMetricLabel"] {
         font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
-    
     [data-testid="stMetricValue"] {
-        font-size: 1.5rem;
-        font-weight: 700;
+        font-size: 1rem;
     }
-    
-    /* Typography */
+    .stButton button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
     h1 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    h2 {
         font-size: 1.5rem;
-        font-weight: 600;
         margin-bottom: 0.5rem;
-        color: #1F2937;
     }
-    
+    h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
     h3 {
-        font-size: 1.25rem;
-        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+    }
+    [data-testid="stFileUploader"] {
+        padding: 0.5rem;
+    }
+    .element-container {
         margin-bottom: 0.5rem;
-        color: #374151;
-    }
-    
-    /* Toast Notifications */
-    .toast-success {
-        background: #D1FAE5;
-        color: #065F46;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #10B981;
-        margin-bottom: 1rem;
-    }
-    
-    .toast-warning {
-        background: #FEF3C7;
-        color: #92400E;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #F59E0B;
-        margin-bottom: 1rem;
-    }
-    
-    /* Simple Charts */
-    .chart-bar {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        height: 2rem;
-        border-radius: 0.25rem;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        padding: 0 1rem;
-        color: white;
-        font-weight: 600;
-        font-size: 0.875rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# REUSABLE COMPONENTS
-# ============================================================================
-
-def status_badge(status):
-    """Generate professional status badge"""
-    badge_map = {
-        "OK": ("PASS", "status-pass"),
-        "Yellow": ("REVIEW", "status-review"),
-        "Amber": ("CONCERN", "status-concern"),
-        "Red": ("BLOCK", "status-block"),
-        "FLAGGED": ("FLAGGED", "status-block"),
-        "CHECKED": ("CHECKED", "status-pass")
-    }
-    
-    label, css_class = badge_map.get(status, (status, "status-pass"))
-    return f'<span class="status-badge {css_class}">{label}</span>'
-
-def metric_card(label, value):
-    """Generate gradient metric card"""
-    return f"""
-    <div class="metric-card">
-        <div class="metric-card-label">{label}</div>
-        <div class="metric-card-value">{value}</div>
-    </div>
-    """
-
-def progress_bar(current, total):
-    """Generate custom progress bar"""
-    percentage = (current / total * 100) if total > 0 else 0
-    return f"""
-    <div class="custom-progress">
-        <div class="custom-progress-bar" style="width: {percentage}%"></div>
-    </div>
-    <p style="text-align: center; font-size: 0.875rem; color: #6B7280; margin-top: 0.5rem;">
-        {current} / {total} patterns reviewed ({percentage:.1f}%)
-    </p>
-    """
-
-def simple_bar_chart(data_dict, max_width=300):
-    """Generate simple HTML bar chart"""
-    if not data_dict:
-        return ""
-    
-    max_value = max(data_dict.values()) if data_dict.values() else 1
-    
-    html = ""
-    for label, value in data_dict.items():
-        width = (value / max_value * max_width) if max_value > 0 else 0
-        html += f"""
-        <div style="margin-bottom: 0.5rem;">
-            <div style="font-size: 0.875rem; color: #6B7280; margin-bottom: 0.25rem;">
-                {status_badge(label)} {value}
-            </div>
-            <div class="chart-bar" style="width: {width}px;">
-                {value}
-            </div>
-        </div>
-        """
-    return html
-
-# ============================================================================
-# ANALYTICS FUNCTIONS
-# ============================================================================
-
-def calculate_session_stats():
-    """Calculate comprehensive session statistics"""
-    if not st.session_state.decisions:
-        return None
-    
-    total_reviewed = len(st.session_state.decisions)
-    decisions_count = {}
-    for decision in st.session_state.decisions.values():
-        decisions_count[decision] = decisions_count.get(decision, 0) + 1
-    
-    stats = {
-        'total_reviewed': total_reviewed,
-        'pass_rate': decisions_count.get('OK', 0) / total_reviewed * 100 if total_reviewed > 0 else 0,
-        'block_rate': decisions_count.get('Red', 0) / total_reviewed * 100 if total_reviewed > 0 else 0,
-        'decisions_count': decisions_count
-    }
-    
-    return stats
-
-# ============================================================================
-# INITIALIZE SESSION STATE
-# ============================================================================
-
+# Initialize session state
 if 'mode' not in st.session_state:
-    st.session_state.mode = "Dashboard"
+    st.session_state.mode = "Visualizer"
 if 'current_idx' not in st.session_state:
     st.session_state.current_idx = 0
 if 'decisions' not in st.session_state:
@@ -316,21 +74,10 @@ if 'filter_results' not in st.session_state:
     st.session_state.filter_results = None
 if 'uploaded_file_name' not in st.session_state:
     st.session_state.uploaded_file_name = None
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
-if 'active_filters' not in st.session_state:
-    st.session_state.active_filters = []
-if 'quick_test_results' not in st.session_state:
-    st.session_state.quick_test_results = None
-if 'quick_page_idx' not in st.session_state:
-    st.session_state.quick_page_idx = 0
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
+# Helper function for SMARTS.plus visualization
 def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
-    """Get visualization from SMARTS.plus API"""
+    """Get visualization from SMARTS.plus API - returns SVG string"""
     cache_key = f"{smarts_pattern}_{api_key[:8]}_svg"
     if use_cache and cache_key in st.session_state.viz_cache:
         return st.session_state.viz_cache[cache_key]
@@ -340,7 +87,7 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
             "query": {
                 "smarts": smarts_pattern,
                 "parameters": {
-                    "file_format": "svg",
+                    "file_format": "svg",  # Use SVG for vector quality
                     "visualization_mode": 0,
                     "legend_mode": 1,
                     "smarts_string_into_picture": True,
@@ -383,68 +130,20 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
                 return svg_data
         return None
     except Exception as e:
+        # Show error in debug mode
         if st.session_state.get('debug_mode', False):
             st.error(f"SMARTS.plus error: {str(e)}")
         return None
 
-def filter_patterns(df, search_query, active_filters):
-    """Filter patterns based on search and filters"""
-    if df is None:
-        return None
-    
-    filtered_df = df.copy()
-    
-    if search_query:
-        mask = (
-            filtered_df['SMARTS'].str.contains(search_query, case=False, na=False) |
-            (filtered_df['Description'].str.contains(search_query, case=False, na=False) if 'Description' in filtered_df.columns else False)
-        )
-        filtered_df = filtered_df[mask]
-    
-    if "Not Reviewed" in active_filters:
-        reviewed_indices = set(st.session_state.decisions.keys())
-        filtered_df = filtered_df[~filtered_df.index.isin(reviewed_indices)]
-    
-    if "Flagged Only" in active_filters:
-        flagged_indices = [idx for idx, dec in st.session_state.decisions.items() if dec in ["Red", "Amber"]]
-        filtered_df = filtered_df[filtered_df.index.isin(flagged_indices)]
-    
-    return filtered_df
-
-# ============================================================================
-# HEADER & NAVIGATION
-# ============================================================================
-
-st.title("🧬 SMARTS Toolkit Pro")
-
-col_nav1, col_nav2 = st.columns([3, 1])
-
-with col_nav1:
-    mode = st.radio(
-        "Navigation:",
-        ["Dashboard", "Pattern Curator", "Batch Validator", "Quick Tester", "Production Filter", "Analytics"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
-    st.session_state.mode = mode
-
-with col_nav2:
-    if st.button("🔄 Reset All Data", use_container_width=True):
-        st.session_state.smarts_data = None
-        st.session_state.test_molecules = None
-        st.session_state.uploaded_file_name = None
-        st.session_state.current_idx = 0
-        st.session_state.decisions = {}
-        st.rerun()
-
-st.divider()
+# Header
+st.title("🔬 SMARTS Toolkit")
+mode = st.radio("Select Mode:", ["Visualizer", "Validator", "Gen AI Filter"], horizontal=True, key="mode_selector")
+st.session_state.mode = mode
 
 # Settings expander
 with st.expander("⚙️ Settings", expanded=False):
-    col_s1, col_s2, col_s3 = st.columns(3)
-    
+    col_s1, col_s2 = st.columns(2)
     with col_s1:
-        st.subheader("API Settings")
         api_key_input = st.text_input(
             "SMARTS.plus API Key",
             type="password",
@@ -454,128 +153,29 @@ with st.expander("⚙️ Settings", expanded=False):
         if api_key_input != st.session_state.api_key:
             st.session_state.api_key = api_key_input
             st.session_state.viz_cache = {}
-        
+    with col_s2:
         use_smartsplus = st.checkbox(
-            "Use SMARTS.plus visualization",
+            "Use SMARTS.plus viz",
             value=bool(st.session_state.api_key),
             disabled=not bool(st.session_state.api_key)
         )
-    
-    with col_s2:
-        st.subheader("Info")
-        st.metric("Reviewed", len(st.session_state.decisions))
-        st.metric("Cache", len(st.session_state.viz_cache))
-    
-    with col_s3:
-        st.subheader("Debug")
-        st.session_state.debug_mode = st.checkbox("Debug mode", value=False)
+        st.session_state.debug_mode = st.checkbox(
+            "Debug mode",
+            value=False,
+            help="Show SMARTS.plus API errors"
+        )
 
 st.divider()
 
 # ============================================================================
-# MODE: DASHBOARD
+# MODE 1: VISUALIZER
 # ============================================================================
 
-if mode == "Dashboard":
-    st.header("📊 Dashboard")
-    
-    stats = calculate_session_stats()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        total = stats['total_reviewed'] if stats else 0
-        st.markdown(metric_card("Reviewed", total), unsafe_allow_html=True)
-    
-    with col2:
-        pass_rate = stats['pass_rate'] if stats else 0
-        st.markdown(metric_card("Pass Rate", f"{pass_rate:.1f}%"), unsafe_allow_html=True)
-    
-    with col3:
-        block_rate = stats['block_rate'] if stats else 0
-        st.markdown(metric_card("Block Rate", f"{block_rate:.1f}%"), unsafe_allow_html=True)
-    
-    with col4:
-        total_patterns = len(st.session_state.smarts_data) if st.session_state.smarts_data is not None else 0
-        st.markdown(metric_card("Total", total_patterns), unsafe_allow_html=True)
-    
-    st.write("")
-    
-    if stats:
-        st.subheader("Decision Distribution")
-        chart_html = simple_bar_chart(stats['decisions_count'])
-        st.markdown(chart_html, unsafe_allow_html=True)
-    
-    st.write("")
-    st.subheader("Quick Actions")
-    
-    col_a1, col_a2, col_a3 = st.columns(3)
-    
-    with col_a1:
-        st.markdown("""
-        <div class="dashboard-card">
-            <div class="dashboard-card-title">🔬 Pattern Curator</div>
-            <div class="dashboard-card-subtitle">Review and classify patterns</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Start Curation", use_container_width=True, type="primary"):
-            st.session_state.mode = "Pattern Curator"
-            st.rerun()
-    
-    with col_a2:
-        st.markdown("""
-        <div class="dashboard-card">
-            <div class="dashboard-card-title">⚡ Quick Tester</div>
-            <div class="dashboard-card-subtitle">Test patterns instantly</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Quick Test", use_container_width=True):
-            st.session_state.mode = "Quick Tester"
-            st.rerun()
-    
-    with col_a3:
-        st.markdown("""
-        <div class="dashboard-card">
-            <div class="dashboard-card-title">📈 Analytics</div>
-            <div class="dashboard-card-subtitle">View insights</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Analytics", use_container_width=True):
-            st.session_state.mode = "Analytics"
-            st.rerun()
-
-# ============================================================================
-# MODE: PATTERN CURATOR
-# ============================================================================
-
-elif mode == "Pattern Curator":
-    st.header("🔬 Pattern Curator")
-    
-    col_search, col_filter = st.columns([3, 2])
-    
-    with col_search:
-        search_query = st.text_input(
-            "🔍 Search",
-            placeholder="Search patterns...",
-            key="curator_search",
-            label_visibility="collapsed"
-        )
-        st.session_state.search_query = search_query
-    
-    with col_filter:
-        active_filters = st.multiselect(
-            "Filters",
-            ["Not Reviewed", "Flagged Only"],
-            key="curator_filters",
-            label_visibility="collapsed"
-        )
-        st.session_state.active_filters = active_filters
-    
-    st.write("")
-    
+if mode == "Visualizer":
     uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
     
     if uploaded_file:
+        # Detect new file uploads
         current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
         
         if st.session_state.uploaded_file_name != current_file_id:
@@ -587,52 +187,28 @@ elif mode == "Pattern Curator":
                 st.session_state.current_idx = 0
                 st.session_state.decisions = {}
                 st.session_state.uploaded_file_name = current_file_id
-                st.success(f"✅ Loaded {len(df)} patterns")
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Parse error: {str(e)}")
                 st.stop()
-    
-    # Check if data exists in session state (handles both initial upload and refresh cases)
-    if st.session_state.smarts_data is not None:
+        
         df = st.session_state.smarts_data
-        filtered_df = filter_patterns(df, search_query, active_filters)
+        total = len(df)
+        current = st.session_state.current_idx
+        progress = len(st.session_state.decisions) / total if total > 0 else 0
         
-        if filtered_df is None or len(filtered_df) == 0:
-            st.warning("No patterns match")
-            st.stop()
-        
-        filtered_indices = filtered_df.index.tolist()
-        
-        if st.session_state.current_idx in filtered_indices:
-            current_filtered_pos = filtered_indices.index(st.session_state.current_idx)
-        else:
-            current_filtered_pos = 0
-            st.session_state.current_idx = filtered_indices[0]
-        
-        total = len(filtered_df)
-        current = current_filtered_pos
-        actual_idx = filtered_indices[current]
-        
-        progress = len(st.session_state.decisions) / len(df) if len(df) > 0 else 0
-        st.markdown(progress_bar(len(st.session_state.decisions), len(df)), unsafe_allow_html=True)
-        
-        st.write("")
+        st.progress(progress, text=f"Pattern {current + 1}/{total}")
         
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("Reviewed", f"{len(st.session_state.decisions)}/{len(df)}")
+            st.metric("✓", f"{len(st.session_state.decisions)}/{total}", label_visibility="collapsed")
         with col2:
-            pass_count = sum(1 for d in st.session_state.decisions.values() if d == "OK")
-            st.metric("Pass", pass_count)
+            st.metric("🟢", sum(1 for d in st.session_state.decisions.values() if d == "OK"), label_visibility="collapsed")
         with col3:
-            yellow_count = sum(1 for d in st.session_state.decisions.values() if d == "Yellow")
-            st.metric("Review", yellow_count)
+            st.metric("🟡", sum(1 for d in st.session_state.decisions.values() if d == "Yellow"), label_visibility="collapsed")
         with col4:
-            amber_count = sum(1 for d in st.session_state.decisions.values() if d == "Amber")
-            st.metric("Concern", amber_count)
+            st.metric("🟠", sum(1 for d in st.session_state.decisions.values() if d == "Amber"), label_visibility="collapsed")
         with col5:
-            red_count = sum(1 for d in st.session_state.decisions.values() if d == "Red")
-            st.metric("Block", red_count)
+            st.metric("🔴", sum(1 for d in st.session_state.decisions.values() if d == "Red"), label_visibility="collapsed")
         
         st.write("")
         
@@ -640,18 +216,11 @@ elif mode == "Pattern Curator":
             col_main, col_side = st.columns([2.5, 1])
             
             with col_main:
-                smarts_pattern = df.iloc[actual_idx]['SMARTS']
-                
-                st.markdown(f"""
-                <div class="dashboard-card">
-                    <div class="dashboard-card-title">Pattern {current + 1} of {total}</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
+                smarts_pattern = df.iloc[current]['SMARTS']
                 st.code(smarts_pattern, language='text')
                 
-                if 'Description' in df.columns and pd.notna(df.iloc[actual_idx]['Description']):
-                    st.caption(df.iloc[actual_idx]['Description'])
+                if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
+                    st.caption(df.iloc[current]['Description'])
                 
                 try:
                     pattern = Chem.MolFromSmarts(smarts_pattern)
@@ -660,135 +229,148 @@ elif mode == "Pattern Curator":
                     else:
                         image_displayed = False
                         if use_smartsplus and st.session_state.api_key:
-                            with st.spinner("Loading..."):
-                                smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
-                                if smartsplus_svg:
-                                    import re
-                                    svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
-                                    svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
-                                    st.markdown(f'<div style="width: 800px; max-width: 100%;">{svg_fixed}</div>', unsafe_allow_html=True)
-                                    st.caption("🎨 SMARTS.plus")
-                                    image_displayed = True
+                            smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
+                            if smartsplus_svg:
+                                # Remove width/height attributes so viewBox controls scaling
+                                import re
+                                svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
+                                svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
+                                
+                                # Wrap in 800px container
+                                scaled_svg = f"""
+                                <div style="width: 800px; max-width: 100%;">
+                                    {svg_fixed}
+                                </div>
+                                """
+                                st.markdown(scaled_svg, unsafe_allow_html=True)
+                                st.caption("🎨 SMARTS.plus")
+                                image_displayed = True
                         
                         if not image_displayed:
-                            img = Draw.MolToImage(pattern, size=(400, 320))
-                            st.image(img, width=400)
+                            img = Draw.MolToImage(pattern, size=(350, 280))
+                            st.image(img, width=350)
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
             
             with col_side:
-                if actual_idx in st.session_state.decisions:
-                    current_decision = st.session_state.decisions[actual_idx]
-                    st.markdown(f"**Current:** {status_badge(current_decision)}", unsafe_allow_html=True)
-                    st.write("")
+                if current in st.session_state.decisions:
+                    color_map = {"OK": "🟢", "Yellow": "🟡", "Amber": "🟠", "Red": "🔴"}
+                    st.info(f"{color_map.get(st.session_state.decisions[current], '')} {st.session_state.decisions[current]}")
                 
-                st.markdown("**Classify:**")
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    if st.button("🟢 OK", use_container_width=True, key="ok"):
+                        st.session_state.decisions[current] = "OK"
+                        if current < total - 1:
+                            st.session_state.current_idx += 1
+                        st.rerun()
+                    if st.button("🟠 Amber", use_container_width=True, key="amber"):
+                        st.session_state.decisions[current] = "Amber"
+                        if current < total - 1:
+                            st.session_state.current_idx += 1
+                        st.rerun()
+                with col_b2:
+                    if st.button("🟡 Yellow", use_container_width=True, key="yellow"):
+                        st.session_state.decisions[current] = "Yellow"
+                        if current < total - 1:
+                            st.session_state.current_idx += 1
+                        st.rerun()
+                    if st.button("🔴 Red", use_container_width=True, key="red"):
+                        st.session_state.decisions[current] = "Red"
+                        if current < total - 1:
+                            st.session_state.current_idx += 1
+                        st.rerun()
                 
-                if st.button("✓ PASS", use_container_width=True, key="pass", type="primary"):
-                    st.session_state.decisions[actual_idx] = "OK"
-                    if current < total - 1:
-                        st.session_state.current_idx = filtered_indices[current + 1]
-                    st.rerun()
-                
-                if st.button("👁️ REVIEW", use_container_width=True, key="review"):
-                    st.session_state.decisions[actual_idx] = "Yellow"
-                    if current < total - 1:
-                        st.session_state.current_idx = filtered_indices[current + 1]
-                    st.rerun()
-                
-                if st.button("⚠️ CONCERN", use_container_width=True, key="concern"):
-                    st.session_state.decisions[actual_idx] = "Amber"
-                    if current < total - 1:
-                        st.session_state.current_idx = filtered_indices[current + 1]
-                    st.rerun()
-                
-                if st.button("🛑 BLOCK", use_container_width=True, key="block"):
-                    st.session_state.decisions[actual_idx] = "Red"
-                    if current < total - 1:
-                        st.session_state.current_idx = filtered_indices[current + 1]
-                    st.rerun()
-                
-                st.divider()
+                st.write("")
                 
                 col_n1, col_n2 = st.columns(2)
                 with col_n1:
                     if st.button("⬅️", disabled=(current == 0), use_container_width=True):
-                        st.session_state.current_idx = filtered_indices[current - 1]
+                        st.session_state.current_idx -= 1
                         st.rerun()
                 with col_n2:
                     if st.button("➡️", disabled=(current >= total - 1), use_container_width=True):
-                        st.session_state.current_idx = filtered_indices[current + 1]
+                        st.session_state.current_idx += 1
                         st.rerun()
                 
-                jump_to = st.number_input("Jump to", 1, total, current + 1, key='jump', label_visibility="collapsed")
-                if st.button("🎯 Jump", use_container_width=True):
-                    st.session_state.current_idx = filtered_indices[jump_to - 1]
+                jump_to = st.number_input("Go to #", 1, total, current + 1, key='jump', label_visibility="collapsed")
+                if st.button("Jump", use_container_width=True):
+                    st.session_state.current_idx = jump_to - 1
                     st.rerun()
         
         else:
-            st.success("🎉 Complete!")
+            st.success("🎉 Review complete!")
         
         if len(st.session_state.decisions) > 0:
-            st.write("")
-            st.divider()
-            st.subheader("📥 Export")
-            
-            results_df = df.copy()
-            results_df['Decision'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
-            
-            col_e1, col_e2, col_e3 = st.columns(3)
-            
-            with col_e1:
-                st.download_button("📥 All Results", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
-            
-            with col_e2:
-                concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
-                if len(concerning) > 0:
-                    st.download_button("⚠️ Flagged", concerning.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
-            
-            with col_e3:
-                ok_df = results_df[results_df['Decision'] == 'OK']
-                if len(ok_df) > 0:
-                    st.download_button("✅ Passed", ok_df.to_csv(index=False), "passed.csv", "text/csv", use_container_width=True)
+            with st.expander("📥 Export Results"):
+                results_df = df.copy()
+                results_df['Decision'] = results_df.index.map(
+                    lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED")
+                )
+                
+                col_e1, col_e2, col_e3 = st.columns(3)
+                with col_e1:
+                    st.download_button("📥 All", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
+                with col_e2:
+                    concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
+                    if len(concerning) > 0:
+                        st.download_button("⚠️ Concerning", concerning.to_csv(index=False), "concerning.csv", "text/csv", use_container_width=True)
+                with col_e3:
+                    ok_df = results_df[results_df['Decision'] == 'OK']
+                    if len(ok_df) > 0:
+                        st.download_button("✅ OK", ok_df.to_csv(index=False), "ok.csv", "text/csv", use_container_width=True)
     
     else:
-        st.info("👆 Upload CSV to begin")
+        st.info("Upload a CSV with SMARTS patterns to begin")
 
 # ============================================================================
-# MODE: BATCH VALIDATOR & QUICK TESTER
+# MODE 2: VALIDATOR
 # ============================================================================
 
-elif mode == "Batch Validator":
-    st.header("🔬 Batch Validator")
+elif mode == "Validator":
+    # Sub-mode selector
+    validator_mode = st.radio(
+        "Validation Type:",
+        ["Batch Validation", "Quick Test"],
+        horizontal=True,
+        key="validator_submode"
+    )
     
-    validator_mode = st.radio("Type:", ["Batch Validation", "Quick Test"], horizontal=True, key="val_submode")
     st.write("")
     
+    # ========================================================================
+    # BATCH VALIDATION (Original Workflow)
+    # ========================================================================
     if validator_mode == "Batch Validation":
         col_u1, col_u2 = st.columns(2)
         with col_u1:
-            smarts_file = st.file_uploader("📁 SMARTS", type=['csv'], key='val_smarts', label_visibility="collapsed")
+            smarts_file = st.file_uploader("📁 SMARTS (CSV/SDF)", type=['csv', 'sdf'], key='val_smarts', label_visibility="collapsed")
         with col_u2:
-            molecules_file = st.file_uploader("📁 Molecules", type=['csv'], key='val_mols', label_visibility="collapsed")
+            molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
         
         if smarts_file and st.session_state.smarts_data is None:
             try:
-                df = pd.read_csv(smarts_file)
-                if 'SMARTS' not in df.columns:
-                    df.columns = ['SMARTS'] + list(df.columns[1:])
+                if smarts_file.name.endswith('.csv'):
+                    df = pd.read_csv(smarts_file)
+                    if 'SMARTS' not in df.columns:
+                        df.columns = ['SMARTS'] + list(df.columns[1:])
+                else:
+                    df = PandasTools.LoadSDF(smarts_file)
                 st.session_state.smarts_data = df
                 st.session_state.current_idx = 0
                 st.session_state.decisions = {}
-                st.success(f"✅ Loaded {len(df)} patterns")
             except Exception as e:
                 st.error(f"Error: {str(e)}")
         
         if molecules_file and st.session_state.test_molecules is None:
             try:
-                mol_df = pd.read_csv(molecules_file)
-                smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
-                mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
-                mol_df = mol_df[mol_df['Mol'].notna()]
+                if molecules_file.name.endswith('.csv'):
+                    mol_df = pd.read_csv(molecules_file)
+                    smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
+                    mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
+                    mol_df = mol_df[mol_df['Mol'].notna()]
+                else:
+                    mol_df = PandasTools.LoadSDF(molecules_file)
                 st.session_state.test_molecules = mol_df
                 st.success(f"✅ Loaded {len(mol_df)} molecules")
             except Exception as e:
@@ -800,16 +382,13 @@ elif mode == "Batch Validator":
             total = len(df)
             current = st.session_state.current_idx
             
-            st.markdown(progress_bar(current, total), unsafe_allow_html=True)
-            st.write("")
+            st.progress(current / total if total > 0 else 0, text=f"Pattern {current + 1}/{total}")
             
             col_m1, col_m2 = st.columns(2)
             with col_m1:
-                flagged = sum(1 for d in st.session_state.decisions.values() if d == "FLAGGED")
-                st.metric("Flagged", flagged)
+                st.metric("Flagged", sum(1 for d in st.session_state.decisions.values() if d == "FLAGGED"))
             with col_m2:
-                checked = sum(1 for d in st.session_state.decisions.values() if d == "CHECKED")
-                st.metric("Checked", checked)
+                st.metric("Checked", sum(1 for d in st.session_state.decisions.values() if d == "CHECKED"))
             
             st.write("")
             
@@ -819,9 +398,7 @@ elif mode == "Batch Validator":
                 col_main, col_side = st.columns([2.5, 1])
                 
                 with col_main:
-                    st.markdown(f'<div class="dashboard-card"><div class="dashboard-card-title">Pattern {current + 1} of {total}</div></div>', unsafe_allow_html=True)
                     st.code(smarts_pattern, language='text')
-                    
                     if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
                         st.caption(df.iloc[current]['Description'])
                     
@@ -830,35 +407,33 @@ elif mode == "Batch Validator":
                         if pattern:
                             matches = []
                             for idx, row in mol_df.iterrows():
-                                mol = row.get('Mol')
+                                mol = row.get('Mol') or row.get('ROMol')
                                 if mol and mol.HasSubstructMatch(pattern):
                                     matches.append((idx, mol))
                             
-                            match_rate = len(matches)/len(mol_df)*100
-                            st.markdown(f"**{len(matches)}/{len(mol_df)} matches ({match_rate:.1f}%)**")
-                            
-                            if match_rate > 50:
-                                st.warning("⚠️ High match rate")
-                            elif match_rate == 0:
-                                st.info("ℹ️ No matches")
+                            st.write(f"**{len(matches)}/{len(mol_df)} matches ({len(matches)/len(mol_df)*100:.1f}%)**")
                             
                             if len(matches) > 0:
-                                st.write("**Samples:**")
                                 cols = st.columns(3)
                                 for i, (idx, mol) in enumerate(matches[:6]):
                                     with cols[i % 3]:
-                                        img = Draw.MolToImage(mol, size=(150, 150), highlightAtoms=mol.GetSubstructMatch(pattern))
+                                        img = Draw.MolToImage(mol, size=(150, 150), 
+                                                             highlightAtoms=mol.GetSubstructMatch(pattern))
                                         st.image(img, width=150)
                                         if 'Name' in mol_df.columns:
-                                            st.caption(mol_df.iloc[idx]['Name'])
+                                            st.caption(mol_df.iloc[idx]['Name'], unsafe_allow_html=True)
+                            else:
+                                st.info("No matches")
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
                 
                 with col_side:
                     if current in st.session_state.decisions:
-                        st.markdown(status_badge(st.session_state.decisions[current]), unsafe_allow_html=True)
-                    
-                    st.write("")
+                        status = st.session_state.decisions[current]
+                        if status == "FLAGGED":
+                            st.warning("🚩 Flagged")
+                        else:
+                            st.info("✓ Checked")
                     
                     if st.button("🚩 FLAG", use_container_width=True, type="primary"):
                         st.session_state.decisions[current] = "FLAGGED"
@@ -870,283 +445,350 @@ elif mode == "Batch Validator":
                             st.session_state.current_idx += 1
                         st.rerun()
                     
-                    st.divider()
-                    
+                    st.write("")
                     col_n1, col_n2 = st.columns(2)
                     with col_n1:
-                        if st.button("⬅️", disabled=(current == 0), use_container_width=True):
+                        if st.button("⬅️", disabled=(current == 0), use_container_width=True, key='prev_v'):
                             st.session_state.current_idx -= 1
                             st.rerun()
                     with col_n2:
-                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True):
+                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True, key='next_v'):
                             st.session_state.current_idx += 1
                             st.rerun()
+            
             else:
-                st.success("🎉 Complete!")
+                st.success("🎉 Review complete!")
             
             if len(st.session_state.decisions) > 0:
-                st.write("")
-                st.divider()
-                st.subheader("📥 Export")
-                
-                results_df = df.copy()
-                results_df['Status'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
-                flagged = results_df[results_df['Status'] == 'FLAGGED']
-                
-                col_e1, col_e2 = st.columns(2)
-                with col_e1:
-                    st.download_button("📥 All", results_df.to_csv(index=False), "validation.csv", "text/csv", use_container_width=True)
-                with col_e2:
-                    if len(flagged) > 0:
-                        st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
+                with st.expander("📥 Export"):
+                    results_df = df.copy()
+                    results_df['Status'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
+                    flagged = results_df[results_df['Status'] == 'FLAGGED']
+                    
+                    col_e1, col_e2 = st.columns(2)
+                    with col_e1:
+                        st.download_button("📥 All", results_df.to_csv(index=False), "validation.csv", "text/csv", use_container_width=True)
+                    with col_e2:
+                        if len(flagged) > 0:
+                            st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
+    
         else:
-            st.info("👆 Upload both files to begin")
-
-elif mode == "Quick Tester":
-    st.header("⚡ Quick Tester")
+            st.info("Upload both SMARTS and molecules to begin")
     
-    col_input, col_output = st.columns([1, 1])
-    
-    with col_input:
-        st.subheader("Input")
+    # ========================================================================
+    # QUICK TEST (New Sub-Mode)
+    # ========================================================================
+    elif validator_mode == "Quick Test":
+        # SMARTS input
+        quick_smarts = st.text_area(
+            "SMARTS Pattern:",
+            height=80,
+            placeholder="[#6]1:[#6]:[#6]:[#6]:[#6]:[#6]:1",
+            help="Paste your SMARTS pattern to test"
+        )
         
-        tab1, tab2 = st.tabs(["Custom", "Library"])
+        # Molecule source selector
+        mol_source = st.radio(
+            "Test Against:",
+            ["Upload Molecule File", "Single SMILES"],
+            horizontal=True,
+            key="quick_mol_source"
+        )
         
-        with tab1:
-            quick_smarts = st.text_area("SMARTS:", height=100, placeholder="c1ccccc1", key="quick_smarts_custom")
+        st.write("")
         
-        with tab2:
-            st.write("**Common Patterns:**")
-            pattern_library = {
-                "Benzene": "c1ccccc1",
-                "Primary Amine": "[NX3;H2;!$(NC=O)]",
-                "Carboxylic Acid": "C(=O)[OH]",
-                "Aromatic": "a",
-                "Ester": "C(=O)O",
-                "Amide": "C(=O)N",
-                "Ketone": "[CX3](=O)[#6]",
-                "Aldehyde": "[CX3H1](=O)[#6]",
-                "Ether": "[OD2]([#6])[#6]"
-            }
+        # Initialize session state for quick test
+        if 'quick_test_results' not in st.session_state:
+            st.session_state.quick_test_results = None
+        if 'quick_page_idx' not in st.session_state:
+            st.session_state.quick_page_idx = 0
+        
+        # Molecule input based on source
+        if mol_source == "Upload Molecule File":
+            quick_mol_file = st.file_uploader(
+                "📁 Molecules (CSV/SDF)",
+                type=['csv', 'sdf'],
+                key='quick_mols',
+                label_visibility="collapsed"
+            )
             
-            selected = st.selectbox("Select:", list(pattern_library.keys()))
-            if st.button("Use Pattern", use_container_width=True):
-                quick_smarts = pattern_library[selected]
-                st.session_state.quick_smarts_custom = quick_smarts
-                st.rerun()
-        
-        if quick_smarts:
-            pattern = Chem.MolFromSmarts(quick_smarts)
-            if pattern:
-                st.success("✓ Valid")
-            else:
-                st.error("✗ Invalid")
-        
-        st.divider()
-        
-        mol_source = st.radio("Test:", ["Single SMILES", "File"], horizontal=True)
-        
-        if mol_source == "Single SMILES":
-            quick_smiles = st.text_input("SMILES:", placeholder="CCO")
+            # Load molecules
+            quick_mol_df = None
+            if quick_mol_file:
+                try:
+                    if quick_mol_file.name.endswith('.csv'):
+                        quick_mol_df = pd.read_csv(quick_mol_file)
+                        smiles_col = 'SMILES' if 'SMILES' in quick_mol_df.columns else quick_mol_df.columns[0]
+                        quick_mol_df['Mol'] = quick_mol_df[smiles_col].apply(
+                            lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
+                        )
+                        quick_mol_df = quick_mol_df[quick_mol_df['Mol'].notna()]
+                    else:
+                        quick_mol_df = PandasTools.LoadSDF(quick_mol_file, molColName='Mol')
+                    
+                    st.success(f"✅ Loaded {len(quick_mol_df)} molecules")
+                except Exception as e:
+                    st.error(f"Error loading molecules: {str(e)}")
             
-            if quick_smarts and quick_smiles:
-                if st.button("🚀 Test", type="primary", use_container_width=True):
+            # Run test button
+            if st.button("🚀 Run Test", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_mol_df is not None)):
+                if quick_smarts and quick_mol_df is not None:
+                    with st.spinner("Testing SMARTS pattern..."):
+                        try:
+                            pattern = Chem.MolFromSmarts(quick_smarts)
+                            if pattern is None:
+                                st.error("❌ Invalid SMARTS pattern")
+                            else:
+                                # Find matches
+                                matches = []
+                                for idx, row in quick_mol_df.iterrows():
+                                    mol = row.get('Mol') or row.get('ROMol')
+                                    if mol and mol.HasSubstructMatch(pattern):
+                                        matches.append((idx, mol, row))
+                                
+                                st.session_state.quick_test_results = {
+                                    'pattern': pattern,
+                                    'smarts': quick_smarts,
+                                    'matches': matches,
+                                    'total': len(quick_mol_df),
+                                    'mol_df': quick_mol_df
+                                }
+                                st.session_state.quick_page_idx = 0
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+        
+        else:  # Single SMILES mode
+            quick_smiles = st.text_input(
+                "SMILES:",
+                placeholder="CCO",
+                help="Paste a single SMILES string"
+            )
+            
+            # Run test button
+            if st.button("🚀 Test Match", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_smiles)):
+                if quick_smarts and quick_smiles:
                     try:
                         pattern = Chem.MolFromSmarts(quick_smarts)
                         mol = Chem.MolFromSmiles(quick_smiles)
                         
-                        if pattern and mol:
-                            is_match = mol.HasSubstructMatch(pattern)
-                            st.session_state.quick_test_results = {
-                                'is_match': is_match,
-                                'mol': mol,
-                                'pattern': pattern
-                            }
+                        if pattern is None:
+                            st.error("❌ Invalid SMARTS pattern")
+                        elif mol is None:
+                            st.error("❌ Invalid SMILES")
                         else:
-                            st.error("Invalid input")
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-        else:
-            quick_mol_file = st.file_uploader("📁 Molecules", type=['csv'], key='quick_mols', label_visibility="collapsed")
-            
-            if quick_mol_file and quick_smarts:
-                if st.button("🚀 Run", type="primary", use_container_width=True):
-                    try:
-                        mol_df = pd.read_csv(quick_mol_file)
-                        smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
-                        mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
-                        mol_df = mol_df[mol_df['Mol'].notna()]
-                        
-                        pattern = Chem.MolFromSmarts(quick_smarts)
-                        if pattern:
-                            matches = []
-                            for idx, row in mol_df.iterrows():
-                                mol = row.get('Mol')
-                                if mol and mol.HasSubstructMatch(pattern):
-                                    matches.append((idx, mol, row))
+                            is_match = mol.HasSubstructMatch(pattern)
                             
-                            st.session_state.quick_test_results = {
-                                'pattern': pattern,
-                                'matches': matches,
-                                'total': len(mol_df),
-                                'mol_df': mol_df
-                            }
-                            st.session_state.quick_page_idx = 0
+                            col_res1, col_res2 = st.columns([1, 2])
+                            
+                            with col_res1:
+                                if is_match:
+                                    st.success("✅ MATCH")
+                                else:
+                                    st.error("❌ NO MATCH")
+                            
+                            with col_res2:
+                                if is_match:
+                                    match_atoms = mol.GetSubstructMatch(pattern)
+                                    img = Draw.MolToImage(mol, size=(300, 300), highlightAtoms=match_atoms)
+                                else:
+                                    img = Draw.MolToImage(mol, size=(300, 300))
+                                st.image(img, width=300)
+                    
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
-    
-    with col_output:
-        st.subheader("Results")
         
-        if st.session_state.quick_test_results:
+        # Display results for file mode
+        if st.session_state.quick_test_results and mol_source == "Upload Molecule File":
             results = st.session_state.quick_test_results
+            matches = results['matches']
+            total = results['total']
             
-            if 'is_match' in results:
-                is_match = results['is_match']
-                mol = results['mol']
-                pattern = results['pattern']
-                
-                if is_match:
-                    st.markdown('<div class="toast-success"><strong>✅ MATCH</strong></div>', unsafe_allow_html=True)
-                    match_atoms = mol.GetSubstructMatch(pattern)
-                    img = Draw.MolToImage(mol, size=(400, 400), highlightAtoms=match_atoms)
-                else:
-                    st.markdown('<div class="toast-warning"><strong>❌ NO MATCH</strong></div>', unsafe_allow_html=True)
-                    img = Draw.MolToImage(mol, size=(400, 400))
-                
-                st.image(img, use_column_width=True)
+            st.write("---")
+            st.subheader("📊 Results")
             
-            elif 'matches' in results:
-                matches = results['matches']
-                total = results['total']
+            # Summary
+            col_r1, col_r2, col_r3 = st.columns(3)
+            with col_r1:
+                st.metric("Total Molecules", total)
+            with col_r2:
+                st.metric("✅ Matches", len(matches))
+            with col_r3:
+                st.metric("Match Rate", f"{len(matches)/total*100:.1f}%")
+            
+            st.write("")
+            
+            if len(matches) > 0:
+                # Pagination
+                per_page = 6
+                total_pages = (len(matches) + per_page - 1) // per_page
+                current_page = st.session_state.quick_page_idx
                 
-                col_r1, col_r2, col_r3 = st.columns(3)
-                with col_r1:
-                    st.metric("Total", total)
-                with col_r2:
-                    st.metric("Matches", len(matches))
-                with col_r3:
-                    rate = len(matches)/total*100 if total > 0 else 0
-                    st.metric("Rate", f"{rate:.1f}%")
+                # Display matches
+                start_idx = current_page * per_page
+                end_idx = min(start_idx + per_page, len(matches))
+                page_matches = matches[start_idx:end_idx]
                 
-                st.write("")
+                cols = st.columns(3)
+                for i, (idx, mol, row) in enumerate(page_matches):
+                    with cols[i % 3]:
+                        match_atoms = mol.GetSubstructMatch(results['pattern'])
+                        img = Draw.MolToImage(mol, size=(150, 150), highlightAtoms=match_atoms)
+                        st.image(img, width=150)
+                        
+                        # Show molecule name if available
+                        if 'Name' in row:
+                            st.caption(row['Name'])
+                        elif 'SMILES' in row:
+                            smiles_short = row['SMILES'][:30] + "..." if len(row['SMILES']) > 30 else row['SMILES']
+                            st.caption(smiles_short)
                 
-                if len(matches) > 0:
-                    per_page = 6
-                    total_pages = (len(matches) + per_page - 1) // per_page
-                    current_page = st.session_state.quick_page_idx
-                    
-                    start = current_page * per_page
-                    end = min(start + per_page, len(matches))
-                    page_matches = matches[start:end]
-                    
-                    st.write(f"**Showing {start + 1}-{end} of {len(matches)}**")
-                    
-                    cols = st.columns(3)
-                    for i, (idx, mol, row) in enumerate(page_matches):
-                        with cols[i % 3]:
-                            match_atoms = mol.GetSubstructMatch(results['pattern'])
-                            img = Draw.MolToImage(mol, size=(150, 150), highlightAtoms=match_atoms)
-                            st.image(img, width=150)
-                            if 'Name' in row:
-                                st.caption(row['Name'])
-                    
-                    if total_pages > 1:
-                        st.write("")
-                        col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
-                        with col_p1:
-                            if st.button("⬅️", disabled=(current_page == 0), use_container_width=True):
-                                st.session_state.quick_page_idx -= 1
-                                st.rerun()
-                        with col_p2:
-                            st.write(f"Page {current_page + 1}/{total_pages}")
-                        with col_p3:
-                            if st.button("➡️", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                                st.session_state.quick_page_idx += 1
-                                st.rerun()
-                    
+                # Pagination controls
+                if total_pages > 1:
                     st.write("")
+                    col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
+                    
+                    with col_p1:
+                        if st.button("⬅️ Previous", disabled=(current_page == 0), use_container_width=True):
+                            st.session_state.quick_page_idx -= 1
+                            st.rerun()
+                    
+                    with col_p2:
+                        st.write(f"Page {current_page + 1} of {total_pages}")
+                    
+                    with col_p3:
+                        if st.button("Next ➡️", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                            st.session_state.quick_page_idx += 1
+                            st.rerun()
+                
+                # Export matches
+                st.write("")
+                if st.button("📥 Export Matches", use_container_width=True):
+                    # Create export dataframe
                     match_indices = [idx for idx, _, _ in matches]
                     export_df = results['mol_df'].iloc[match_indices].copy()
-                    cols = [c for c in export_df.columns if c not in ['Mol']]
-                    if 'SMILES' not in cols:
+                    
+                    # Remove Mol column for CSV export
+                    export_cols = [col for col in export_df.columns if col not in ['Mol', 'ROMol']]
+                    
+                    # Add SMILES if not present
+                    if 'SMILES' not in export_cols:
                         export_df['SMILES'] = export_df['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')
-                        cols = ['SMILES'] + cols
-                    st.download_button("📥 Download", export_df[cols].to_csv(index=False), "matches.csv", "text/csv", use_container_width=True, type="primary")
-                else:
-                    st.info("No matches")
-        else:
-            st.info("👈 Configure and run test")
+                        export_cols = ['SMILES'] + export_cols
+                    
+                    st.download_button(
+                        "📥 Download Matches CSV",
+                        export_df[export_cols].to_csv(index=False),
+                        "smarts_matches.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("No matches found for this SMARTS pattern")
+
 
 # ============================================================================
-# MODE: PRODUCTION FILTER
+# MODE 3: GEN AI FILTER (NEW!)
 # ============================================================================
 
-elif mode == "Production Filter":
-    st.header("🚀 Production Filter")
+elif mode == "Gen AI Filter":
+    st.subheader("🧬 Batch Filter Gen AI Output")
     
     col_u1, col_u2 = st.columns(2)
     with col_u1:
-        filter_file = st.file_uploader("📁 Approved SMARTS", type=['csv'], key='filter_smarts')
+        filter_smarts_file = st.file_uploader(
+            "📁 Approved SMARTS (CSV from Visualizer)",
+            type=['csv'],
+            key='filter_smarts',
+            help="Upload CSV with 'Decision' column (from Visualizer export)"
+        )
     with col_u2:
-        gen_ai_file = st.file_uploader("📁 Gen AI Molecules", type=['csv'], key='gen_ai_mols')
+        gen_ai_file = st.file_uploader(
+            "📁 Gen AI Molecules (SDF or CSV)",
+            type=['sdf', 'csv'],
+            key='gen_ai_mols',
+            help="SDF with molecules or CSV with SMILES column"
+        )
     
-    filter_severity = st.multiselect("Apply:", ["Red", "Amber", "Yellow", "OK"], default=["Red", "Amber"])
+    # Filter severity selector
+    filter_severity = st.multiselect(
+        "Apply patterns with these decisions:",
+        ["Red", "Amber", "Yellow", "OK"],
+        default=["Red", "Amber"],
+        help="Which traffic light categories to use as filters"
+    )
     
+    # Load filter patterns
     filter_patterns = None
-    if filter_file:
+    if filter_smarts_file:
         try:
-            filter_df = pd.read_csv(filter_file)
-            if 'Decision' in filter_df.columns:
-                filter_patterns = filter_df[filter_df['Decision'].isin(filter_severity)]
-                st.success(f"✅ {len(filter_patterns)} patterns")
-            else:
-                st.warning("No 'Decision' column")
+            filter_df = pd.read_csv(filter_smarts_file)
+            
+            # Check if Decision column exists
+            if 'Decision' not in filter_df.columns:
+                st.warning("No 'Decision' column found. Using all patterns.")
                 filter_patterns = filter_df
+            else:
+                # Filter by selected severities
+                filter_patterns = filter_df[filter_df['Decision'].isin(filter_severity)]
+                st.info(f"✅ Loaded {len(filter_patterns)} filter patterns ({', '.join(filter_severity)})")
+                
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error loading SMARTS: {str(e)}")
     
+    # Load molecules
     gen_ai_mols = None
     if gen_ai_file:
         try:
-            gen_ai_mols = pd.read_csv(gen_ai_file)
-            smiles_col = 'SMILES' if 'SMILES' in gen_ai_mols.columns else gen_ai_mols.columns[0]
-            gen_ai_mols['Mol'] = gen_ai_mols[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
-            gen_ai_mols = gen_ai_mols[gen_ai_mols['Mol'].notna()]
-            st.success(f"✅ {len(gen_ai_mols)} molecules")
+            if gen_ai_file.name.endswith('.sdf'):
+                # Load SDF
+                gen_ai_mols = PandasTools.LoadSDF(gen_ai_file, molColName='Mol')
+                st.success(f"✅ Loaded {len(gen_ai_mols)} molecules from SDF")
+            else:
+                # Load CSV with SMILES
+                gen_ai_mols = pd.read_csv(gen_ai_file)
+                smiles_col = 'SMILES' if 'SMILES' in gen_ai_mols.columns else gen_ai_mols.columns[0]
+                gen_ai_mols['Mol'] = gen_ai_mols[smiles_col].apply(
+                    lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
+                )
+                gen_ai_mols = gen_ai_mols[gen_ai_mols['Mol'].notna()]
+                st.success(f"✅ Loaded {len(gen_ai_mols)} molecules from CSV")
+                
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error loading molecules: {str(e)}")
     
+    # Run filtering
     if filter_patterns is not None and gen_ai_mols is not None and len(filter_patterns) > 0:
-        if st.button("🚀 Run Filter", type="primary", use_container_width=True):
-            with st.spinner("Filtering..."):
-                compiled = []
+        
+        if st.button("🚀 Run Batch Filter", type="primary", use_container_width=True):
+            
+            with st.spinner("Filtering molecules..."):
+                
+                # Compile SMARTS patterns
+                compiled_patterns = []
                 for idx, row in filter_patterns.iterrows():
-                    p = Chem.MolFromSmarts(row['SMARTS'])
-                    if p:
-                        compiled.append({
-                            'pattern': p,
-                            'smarts': row['SMARTS'],
+                    smarts = row['SMARTS']
+                    pattern = Chem.MolFromSmarts(smarts)
+                    if pattern:
+                        compiled_patterns.append({
+                            'pattern': pattern,
+                            'smarts': smarts,
                             'description': row.get('Description', ''),
                             'decision': row.get('Decision', 'Unknown')
                         })
                 
+                # Filter molecules
                 passed = []
                 failed = []
                 rejection_reasons = []
                 
-                progress_placeholder = st.empty()
-                
                 for idx, row in gen_ai_mols.iterrows():
-                    mol = row.get('Mol')
+                    mol = row.get('Mol') or row.get('ROMol')
                     if mol is None:
                         continue
                     
-                    progress = (idx + 1) / len(gen_ai_mols)
-                    progress_placeholder.progress(progress, text=f"Processing {idx + 1}/{len(gen_ai_mols)}")
-                    
                     caught_by = []
-                    for p in compiled:
+                    for p in compiled_patterns:
                         if mol.HasSubstructMatch(p['pattern']):
                             caught_by.append(p)
                     
@@ -1158,125 +800,97 @@ elif mode == "Production Filter":
                             'molecule_idx': idx,
                             'num_violations': len(caught_by),
                             'patterns': [p['smarts'] for p in caught_by],
-                            'decisions': [p['decision'] for p in caught_by]
+                            'descriptions': [p['description'] for p in caught_by]
                         })
                 
-                progress_placeholder.empty()
-                
+                # Store results
                 st.session_state.filter_results = {
                     'passed': passed,
                     'failed': failed,
                     'rejection_reasons': rejection_reasons,
                     'total': len(gen_ai_mols),
-                    'patterns_used': len(compiled)
+                    'patterns_used': len(compiled_patterns)
                 }
-                st.rerun()
     
+    # Display results
     if st.session_state.filter_results:
         results = st.session_state.filter_results
         
-        st.write("")
-        st.divider()
-        st.subheader("📊 Results")
+        st.write("---")
+        st.subheader("📊 Filtering Results")
         
+        # Summary metrics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(metric_card("Total", results['total']), unsafe_allow_html=True)
+            st.metric("Total Molecules", results['total'])
         with col2:
-            pass_rate = len(results['passed'])/results['total']*100
-            st.markdown(metric_card("Passed", f"{len(results['passed'])} ({pass_rate:.1f}%)"), unsafe_allow_html=True)
+            st.metric("✅ Passed", len(results['passed']), 
+                     delta=f"{len(results['passed'])/results['total']*100:.1f}%")
         with col3:
-            fail_rate = len(results['failed'])/results['total']*100
-            st.markdown(metric_card("Failed", f"{len(results['failed'])} ({fail_rate:.1f}%)"), unsafe_allow_html=True)
+            st.metric("❌ Failed", len(results['failed']),
+                     delta=f"{len(results['failed'])/results['total']*100:.1f}%")
         with col4:
-            st.markdown(metric_card("Filters", results['patterns_used']), unsafe_allow_html=True)
+            st.metric("Filters Used", results['patterns_used'])
         
+        # Export buttons
         st.write("")
-        
         col_e1, col_e2 = st.columns(2)
+        
         with col_e1:
+            # Export passed molecules
             if len(results['passed']) > 0:
                 passed_mols = gen_ai_mols.iloc[results['passed']].copy()
+                
+                # Create export dataframe
                 if 'SMILES' in passed_mols.columns:
                     export_df = passed_mols[['SMILES']].copy()
                 else:
-                    export_df = pd.DataFrame({'SMILES': passed_mols['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')})
-                st.download_button("📥 Passed", export_df.to_csv(index=False), "passed.csv", "text/csv", use_container_width=True, type="primary")
+                    # Generate SMILES from Mol objects
+                    export_df = pd.DataFrame({
+                        'SMILES': passed_mols['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')
+                    })
+                
+                # Add other columns if they exist
+                for col in gen_ai_mols.columns:
+                    if col not in ['Mol', 'ROMol', 'SMILES'] and col in passed_mols.columns:
+                        export_df[col] = passed_mols[col].values
+                
+                st.download_button(
+                    "📥 Download Passed Molecules",
+                    export_df.to_csv(index=False),
+                    "passed_molecules.csv",
+                    "text/csv",
+                    use_container_width=True,
+                    type="primary"
+                )
         
         with col_e2:
+            # Export rejection report
             if len(results['failed']) > 0:
                 rejection_df = pd.DataFrame(results['rejection_reasons'])
-                st.download_button("📥 Rejected", rejection_df.to_csv(index=False), "rejected.csv", "text/csv", use_container_width=True)
+                
+                st.download_button(
+                    "📥 Download Rejection Report",
+                    rejection_df.to_csv(index=False),
+                    "rejection_report.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
         
+        # Show sample rejections
         if len(results['failed']) > 0:
-            with st.expander(f"🔍 Sample Rejections (5 of {len(results['failed'])})"):
+            with st.expander(f"🔍 View Sample Rejections (first 5 of {len(results['failed'])})"):
                 for i, reason in enumerate(results['rejection_reasons'][:5]):
-                    st.markdown(f'<div class="dashboard-card"><div class="dashboard-card-title">Molecule {reason["molecule_idx"]}</div><div class="dashboard-card-subtitle">Caught by {reason["num_violations"]} patterns</div></div>', unsafe_allow_html=True)
-                    for pattern, decision in zip(reason['patterns'], reason['decisions']):
-                        col_r1, col_r2 = st.columns([3, 1])
-                        with col_r1:
-                            st.code(pattern)
-                        with col_r2:
-                            st.markdown(status_badge(decision), unsafe_allow_html=True)
+                    st.write(f"**Molecule {reason['molecule_idx']}** - Caught by {reason['num_violations']} pattern(s):")
+                    for j, (pattern, desc) in enumerate(zip(reason['patterns'], reason['descriptions'])):
+                        st.text(f"  • {pattern}")
+                        if desc:
+                            st.caption(f"    {desc}")
                     if i < 4:
                         st.divider()
-    elif filter_patterns is not None and gen_ai_mols is not None:
-        if len(filter_patterns) == 0:
-            st.warning("⚠️ No patterns selected")
-    else:
-        st.info("👆 Upload files and run filter")
-
-# ============================================================================
-# MODE: ANALYTICS
-# ============================================================================
-
-elif mode == "Analytics":
-    st.header("📈 Analytics")
     
-    stats = calculate_session_stats()
+    elif filter_patterns is not None and gen_ai_mols is not None and len(filter_patterns) == 0:
+        st.warning("No patterns selected. Choose at least one decision category to filter.")
     
-    if stats:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(metric_card("Reviewed", stats['total_reviewed']), unsafe_allow_html=True)
-        with col2:
-            st.markdown(metric_card("Pass Rate", f"{stats['pass_rate']:.1f}%"), unsafe_allow_html=True)
-        with col3:
-            st.markdown(metric_card("Block Rate", f"{stats['block_rate']:.1f}%"), unsafe_allow_html=True)
-        
-        st.write("")
-        
-        col_chart1, col_chart2 = st.columns(2)
-        
-        with col_chart1:
-            st.subheader("Decision Distribution")
-            chart_html = simple_bar_chart(stats['decisions_count'], max_width=400)
-            st.markdown(chart_html, unsafe_allow_html=True)
-        
-        with col_chart2:
-            st.subheader("Breakdown")
-            decisions = stats['decisions_count']
-            for decision, count in decisions.items():
-                pct = count/stats['total_reviewed']*100
-                st.markdown(f"{status_badge(decision)} {count} ({pct:.1f}%)", unsafe_allow_html=True)
-                st.write("")
-        
-        st.write("")
-        st.divider()
-        st.subheader("🎯 Insights")
-        
-        if stats['block_rate'] > 20:
-            st.markdown('<div class="toast-warning"><strong>⚠️ High Block Rate</strong><br>Over 20% blocked. Review criteria.</div>', unsafe_allow_html=True)
-        
-        if stats['pass_rate'] > 80:
-            st.markdown('<div class="toast-success"><strong>✅ High Pass Rate</strong><br>Great! Over 80% passing.</div>', unsafe_allow_html=True)
-        
-        if stats['total_reviewed'] < 50:
-            st.info("💡 Review at least 50 patterns for meaningful statistics")
     else:
-        st.info("No data yet. Start reviewing in Pattern Curator!")
-
-# Footer
-st.write("")
-st.divider()
-st.caption("🧬 SMARTS Toolkit Pro | Built for Digital Chemistry")
+        st.info("Upload both approved SMARTS patterns and Gen AI molecules, then click 'Run Batch Filter'")
