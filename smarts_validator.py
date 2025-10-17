@@ -272,35 +272,6 @@ def simple_bar_chart(data_dict, max_width=300):
     return html
 
 # ============================================================================
-# SESSION MANAGEMENT
-# ============================================================================
-
-def save_session():
-    """Save current session to file"""
-    session_data = {
-        'timestamp': datetime.now().isoformat(),
-        'decisions': st.session_state.decisions,
-        'current_idx': st.session_state.current_idx,
-        'mode': st.session_state.mode,
-        'uploaded_file_name': st.session_state.uploaded_file_name
-    }
-    
-    session_file = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    return json.dumps(session_data, indent=2), session_file
-
-def load_session(uploaded_file):
-    """Load session from file"""
-    try:
-        session_data = json.load(uploaded_file)
-        st.session_state.decisions = session_data.get('decisions', {})
-        st.session_state.decisions = {int(k): v for k, v in st.session_state.decisions.items()}
-        st.session_state.current_idx = session_data.get('current_idx', 0)
-        return True
-    except Exception as e:
-        st.error(f"Failed to load session: {str(e)}")
-        return False
-
-# ============================================================================
 # ANALYTICS FUNCTIONS
 # ============================================================================
 
@@ -349,10 +320,6 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 if 'active_filters' not in st.session_state:
     st.session_state.active_filters = []
-if 'session_start_time' not in st.session_state:
-    st.session_state.session_start_time = datetime.now()
-if 'session_name' not in st.session_state:
-    st.session_state.session_name = f"Session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 if 'quick_test_results' not in st.session_state:
     st.session_state.quick_test_results = None
 if 'quick_page_idx' not in st.session_state:
@@ -450,12 +417,9 @@ def filter_patterns(df, search_query, active_filters):
 
 st.title("🧬 SMARTS Toolkit Pro")
 
-col_nav1, col_nav2, col_nav3 = st.columns([1, 3, 1])
+col_nav1, col_nav2 = st.columns([3, 1])
 
 with col_nav1:
-    st.markdown(f"**Session:** {st.session_state.session_name}")
-
-with col_nav2:
     mode = st.radio(
         "Navigation:",
         ["Dashboard", "Pattern Curator", "Batch Validator", "Quick Tester", "Production Filter", "Analytics"],
@@ -464,9 +428,14 @@ with col_nav2:
     )
     st.session_state.mode = mode
 
-with col_nav3:
-    duration = datetime.now() - st.session_state.session_start_time
-    st.markdown(f"**Time:** {str(duration).split('.')[0]}")
+with col_nav2:
+    if st.button("🔄 Reset All Data", use_container_width=True):
+        st.session_state.smarts_data = None
+        st.session_state.test_molecules = None
+        st.session_state.uploaded_file_name = None
+        st.session_state.current_idx = 0
+        st.session_state.decisions = {}
+        st.rerun()
 
 st.divider()
 
@@ -493,43 +462,13 @@ with st.expander("⚙️ Settings", expanded=False):
         )
     
     with col_s2:
-        st.subheader("Session Management")
-        
-        session_name_input = st.text_input(
-            "Session Name",
-            value=st.session_state.session_name
-        )
-        st.session_state.session_name = session_name_input
-        
-        col_save, col_load = st.columns(2)
-        with col_save:
-            if st.button("💾 Save", use_container_width=True):
-                session_json, filename = save_session()
-                st.download_button(
-                    "📥 Download",
-                    session_json,
-                    filename,
-                    "application/json",
-                    use_container_width=True
-                )
-        
-        with col_load:
-            uploaded_session = st.file_uploader(
-                "Load Session",
-                type=['json'],
-                key='session_upload',
-                label_visibility="collapsed"
-            )
-            if uploaded_session:
-                if load_session(uploaded_session):
-                    st.success("Loaded!")
-                    st.rerun()
-    
-    with col_s3:
         st.subheader("Info")
-        st.session_state.debug_mode = st.checkbox("Debug mode", value=False)
         st.metric("Reviewed", len(st.session_state.decisions))
         st.metric("Cache", len(st.session_state.viz_cache))
+    
+    with col_s3:
+        st.subheader("Debug")
+        st.session_state.debug_mode = st.checkbox("Debug mode", value=False)
 
 st.divider()
 
@@ -652,7 +591,9 @@ elif mode == "Pattern Curator":
             except Exception as e:
                 st.error(f"Error: {str(e)}")
                 st.stop()
-        
+    
+    # Check if data exists in session state (handles both initial upload and refresh cases)
+    if st.session_state.smarts_data is not None:
         df = st.session_state.smarts_data
         filtered_df = filter_patterns(df, search_query, active_filters)
         
@@ -795,24 +736,20 @@ elif mode == "Pattern Curator":
             results_df = df.copy()
             results_df['Decision'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
             
-            col_e1, col_e2, col_e3, col_e4 = st.columns(4)
+            col_e1, col_e2, col_e3 = st.columns(3)
             
             with col_e1:
-                st.download_button("📥 All", results_df.to_csv(index=False), "all.csv", "text/csv", use_container_width=True)
+                st.download_button("📥 All Results", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
             
             with col_e2:
                 concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
                 if len(concerning) > 0:
-                    st.download_button("⚠️ Concern", concerning.to_csv(index=False), "concern.csv", "text/csv", use_container_width=True)
+                    st.download_button("⚠️ Flagged", concerning.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
             
             with col_e3:
                 ok_df = results_df[results_df['Decision'] == 'OK']
                 if len(ok_df) > 0:
-                    st.download_button("✅ Pass", ok_df.to_csv(index=False), "pass.csv", "text/csv", use_container_width=True)
-            
-            with col_e4:
-                session_json, filename = save_session()
-                st.download_button("💾 Session", session_json, filename, "application/json", use_container_width=True)
+                    st.download_button("✅ Passed", ok_df.to_csv(index=False), "passed.csv", "text/csv", use_container_width=True)
     
     else:
         st.info("👆 Upload CSV to begin")
@@ -1299,17 +1236,13 @@ elif mode == "Analytics":
     stats = calculate_session_stats()
     
     if stats:
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown(metric_card("Reviewed", stats['total_reviewed']), unsafe_allow_html=True)
         with col2:
             st.markdown(metric_card("Pass Rate", f"{stats['pass_rate']:.1f}%"), unsafe_allow_html=True)
         with col3:
             st.markdown(metric_card("Block Rate", f"{stats['block_rate']:.1f}%"), unsafe_allow_html=True)
-        with col4:
-            duration = datetime.now() - st.session_state.session_start_time
-            minutes = int(duration.total_seconds() / 60)
-            st.markdown(metric_card("Duration", f"{minutes} min"), unsafe_allow_html=True)
         
         st.write("")
         
