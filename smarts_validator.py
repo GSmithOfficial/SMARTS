@@ -472,8 +472,8 @@ elif mode == "Validator":
                     if len(flagged) > 0:
                         st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
     
-    else:
-        st.info("Upload both SMARTS and molecules to begin")
+        else:
+            st.info("Upload both SMARTS and molecules to begin")
     
     # ========================================================================
     # QUICK TEST (New Sub-Mode)
