@@ -347,130 +347,130 @@ elif mode == "Validator":
             smarts_file = st.file_uploader("📁 SMARTS (CSV/SDF)", type=['csv', 'sdf'], key='val_smarts', label_visibility="collapsed")
         with col_u2:
             molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
-    
-    if smarts_file and st.session_state.smarts_data is None:
-        try:
-            if smarts_file.name.endswith('.csv'):
-                df = pd.read_csv(smarts_file)
-                if 'SMARTS' not in df.columns:
-                    df.columns = ['SMARTS'] + list(df.columns[1:])
-            else:
-                df = PandasTools.LoadSDF(smarts_file)
-            st.session_state.smarts_data = df
-            st.session_state.current_idx = 0
-            st.session_state.decisions = {}
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    
-    if molecules_file and st.session_state.test_molecules is None:
-        try:
-            if molecules_file.name.endswith('.csv'):
-                mol_df = pd.read_csv(molecules_file)
-                smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
-                mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
-                mol_df = mol_df[mol_df['Mol'].notna()]
-            else:
-                mol_df = PandasTools.LoadSDF(molecules_file)
-            st.session_state.test_molecules = mol_df
-            st.success(f"✅ Loaded {len(mol_df)} molecules")
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    
-    if st.session_state.smarts_data is not None and st.session_state.test_molecules is not None:
-        df = st.session_state.smarts_data
-        mol_df = st.session_state.test_molecules
-        total = len(df)
-        current = st.session_state.current_idx
         
-        st.progress(current / total if total > 0 else 0, text=f"Pattern {current + 1}/{total}")
+        if smarts_file and st.session_state.smarts_data is None:
+            try:
+                if smarts_file.name.endswith('.csv'):
+                    df = pd.read_csv(smarts_file)
+                    if 'SMARTS' not in df.columns:
+                        df.columns = ['SMARTS'] + list(df.columns[1:])
+                else:
+                    df = PandasTools.LoadSDF(smarts_file)
+                st.session_state.smarts_data = df
+                st.session_state.current_idx = 0
+                st.session_state.decisions = {}
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
         
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            st.metric("Flagged", sum(1 for d in st.session_state.decisions.values() if d == "FLAGGED"))
-        with col_m2:
-            st.metric("Checked", sum(1 for d in st.session_state.decisions.values() if d == "CHECKED"))
+        if molecules_file and st.session_state.test_molecules is None:
+            try:
+                if molecules_file.name.endswith('.csv'):
+                    mol_df = pd.read_csv(molecules_file)
+                    smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
+                    mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
+                    mol_df = mol_df[mol_df['Mol'].notna()]
+                else:
+                    mol_df = PandasTools.LoadSDF(molecules_file)
+                st.session_state.test_molecules = mol_df
+                st.success(f"✅ Loaded {len(mol_df)} molecules")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
         
-        st.write("")
-        
-        if current < total:
-            smarts_pattern = df.iloc[current]['SMARTS']
+        if st.session_state.smarts_data is not None and st.session_state.test_molecules is not None:
+            df = st.session_state.smarts_data
+            mol_df = st.session_state.test_molecules
+            total = len(df)
+            current = st.session_state.current_idx
             
-            col_main, col_side = st.columns([2.5, 1])
+            st.progress(current / total if total > 0 else 0, text=f"Pattern {current + 1}/{total}")
             
-            with col_main:
-                st.code(smarts_pattern, language='text')
-                if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
-                    st.caption(df.iloc[current]['Description'])
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.metric("Flagged", sum(1 for d in st.session_state.decisions.values() if d == "FLAGGED"))
+            with col_m2:
+                st.metric("Checked", sum(1 for d in st.session_state.decisions.values() if d == "CHECKED"))
+            
+            st.write("")
+            
+            if current < total:
+                smarts_pattern = df.iloc[current]['SMARTS']
                 
-                try:
-                    pattern = Chem.MolFromSmarts(smarts_pattern)
-                    if pattern:
-                        matches = []
-                        for idx, row in mol_df.iterrows():
-                            mol = row.get('Mol') or row.get('ROMol')
-                            if mol and mol.HasSubstructMatch(pattern):
-                                matches.append((idx, mol))
-                        
-                        st.write(f"**{len(matches)}/{len(mol_df)} matches ({len(matches)/len(mol_df)*100:.1f}%)**")
-                        
-                        if len(matches) > 0:
-                            cols = st.columns(3)
-                            for i, (idx, mol) in enumerate(matches[:6]):
-                                with cols[i % 3]:
-                                    img = Draw.MolToImage(mol, size=(150, 150), 
-                                                         highlightAtoms=mol.GetSubstructMatch(pattern))
-                                    st.image(img, width=150)
-                                    if 'Name' in mol_df.columns:
-                                        st.caption(mol_df.iloc[idx]['Name'], unsafe_allow_html=True)
+                col_main, col_side = st.columns([2.5, 1])
+                
+                with col_main:
+                    st.code(smarts_pattern, language='text')
+                    if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
+                        st.caption(df.iloc[current]['Description'])
+                    
+                    try:
+                        pattern = Chem.MolFromSmarts(smarts_pattern)
+                        if pattern:
+                            matches = []
+                            for idx, row in mol_df.iterrows():
+                                mol = row.get('Mol') or row.get('ROMol')
+                                if mol and mol.HasSubstructMatch(pattern):
+                                    matches.append((idx, mol))
+                            
+                            st.write(f"**{len(matches)}/{len(mol_df)} matches ({len(matches)/len(mol_df)*100:.1f}%)**")
+                            
+                            if len(matches) > 0:
+                                cols = st.columns(3)
+                                for i, (idx, mol) in enumerate(matches[:6]):
+                                    with cols[i % 3]:
+                                        img = Draw.MolToImage(mol, size=(150, 150), 
+                                                             highlightAtoms=mol.GetSubstructMatch(pattern))
+                                        st.image(img, width=150)
+                                        if 'Name' in mol_df.columns:
+                                            st.caption(mol_df.iloc[idx]['Name'], unsafe_allow_html=True)
+                            else:
+                                st.info("No matches")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                
+                with col_side:
+                    if current in st.session_state.decisions:
+                        status = st.session_state.decisions[current]
+                        if status == "FLAGGED":
+                            st.warning("🚩 Flagged")
                         else:
-                            st.info("No matches")
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                            st.info("✓ Checked")
+                    
+                    if st.button("🚩 FLAG", use_container_width=True, type="primary"):
+                        st.session_state.decisions[current] = "FLAGGED"
+                        st.rerun()
+                    
+                    if st.button("✓ OK", use_container_width=True):
+                        st.session_state.decisions[current] = "CHECKED"
+                        if current < total - 1:
+                            st.session_state.current_idx += 1
+                        st.rerun()
+                    
+                    st.write("")
+                    col_n1, col_n2 = st.columns(2)
+                    with col_n1:
+                        if st.button("⬅️", disabled=(current == 0), use_container_width=True, key='prev_v'):
+                            st.session_state.current_idx -= 1
+                            st.rerun()
+                    with col_n2:
+                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True, key='next_v'):
+                            st.session_state.current_idx += 1
+                            st.rerun()
             
-            with col_side:
-                if current in st.session_state.decisions:
-                    status = st.session_state.decisions[current]
-                    if status == "FLAGGED":
-                        st.warning("🚩 Flagged")
-                    else:
-                        st.info("✓ Checked")
-                
-                if st.button("🚩 FLAG", use_container_width=True, type="primary"):
-                    st.session_state.decisions[current] = "FLAGGED"
-                    st.rerun()
-                
-                if st.button("✓ OK", use_container_width=True):
-                    st.session_state.decisions[current] = "CHECKED"
-                    if current < total - 1:
-                        st.session_state.current_idx += 1
-                    st.rerun()
-                
-                st.write("")
-                col_n1, col_n2 = st.columns(2)
-                with col_n1:
-                    if st.button("⬅️", disabled=(current == 0), use_container_width=True, key='prev_v'):
-                        st.session_state.current_idx -= 1
-                        st.rerun()
-                with col_n2:
-                    if st.button("➡️", disabled=(current >= total - 1), use_container_width=True, key='next_v'):
-                        st.session_state.current_idx += 1
-                        st.rerun()
-        
-        else:
-            st.success("🎉 Review complete!")
-        
-        if len(st.session_state.decisions) > 0:
-            with st.expander("📥 Export"):
-                results_df = df.copy()
-                results_df['Status'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
-                flagged = results_df[results_df['Status'] == 'FLAGGED']
-                
-                col_e1, col_e2 = st.columns(2)
-                with col_e1:
-                    st.download_button("📥 All", results_df.to_csv(index=False), "validation.csv", "text/csv", use_container_width=True)
-                with col_e2:
-                    if len(flagged) > 0:
-                        st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
+            else:
+                st.success("🎉 Review complete!")
+            
+            if len(st.session_state.decisions) > 0:
+                with st.expander("📥 Export"):
+                    results_df = df.copy()
+                    results_df['Status'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
+                    flagged = results_df[results_df['Status'] == 'FLAGGED']
+                    
+                    col_e1, col_e2 = st.columns(2)
+                    with col_e1:
+                        st.download_button("📥 All", results_df.to_csv(index=False), "validation.csv", "text/csv", use_container_width=True)
+                    with col_e2:
+                        if len(flagged) > 0:
+                            st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
     
         else:
             st.info("Upload both SMARTS and molecules to begin")
