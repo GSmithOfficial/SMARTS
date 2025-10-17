@@ -328,11 +328,25 @@ if mode == "Visualizer":
 # ============================================================================
 
 elif mode == "Validator":
-    col_u1, col_u2 = st.columns(2)
-    with col_u1:
-        smarts_file = st.file_uploader("📁 SMARTS (CSV/SDF)", type=['csv', 'sdf'], key='val_smarts', label_visibility="collapsed")
-    with col_u2:
-        molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
+    # Sub-mode selector
+    validator_mode = st.radio(
+        "Validation Type:",
+        ["Batch Validation", "Quick Test"],
+        horizontal=True,
+        key="validator_submode"
+    )
+    
+    st.write("")
+    
+    # ========================================================================
+    # BATCH VALIDATION (Original Workflow)
+    # ========================================================================
+    if validator_mode == "Batch Validation":
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            smarts_file = st.file_uploader("📁 SMARTS (CSV/SDF)", type=['csv', 'sdf'], key='val_smarts', label_visibility="collapsed")
+        with col_u2:
+            molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
     
     if smarts_file and st.session_state.smarts_data is None:
         try:
@@ -460,6 +474,218 @@ elif mode == "Validator":
     
     else:
         st.info("Upload both SMARTS and molecules to begin")
+    
+    # ========================================================================
+    # QUICK TEST (New Sub-Mode)
+    # ========================================================================
+    elif validator_mode == "Quick Test":
+        # SMARTS input
+        quick_smarts = st.text_area(
+            "SMARTS Pattern:",
+            height=80,
+            placeholder="[#6]1:[#6]:[#6]:[#6]:[#6]:[#6]:1",
+            help="Paste your SMARTS pattern to test"
+        )
+        
+        # Molecule source selector
+        mol_source = st.radio(
+            "Test Against:",
+            ["Upload Molecule File", "Single SMILES"],
+            horizontal=True,
+            key="quick_mol_source"
+        )
+        
+        st.write("")
+        
+        # Initialize session state for quick test
+        if 'quick_test_results' not in st.session_state:
+            st.session_state.quick_test_results = None
+        if 'quick_page_idx' not in st.session_state:
+            st.session_state.quick_page_idx = 0
+        
+        # Molecule input based on source
+        if mol_source == "Upload Molecule File":
+            quick_mol_file = st.file_uploader(
+                "📁 Molecules (CSV/SDF)",
+                type=['csv', 'sdf'],
+                key='quick_mols',
+                label_visibility="collapsed"
+            )
+            
+            # Load molecules
+            quick_mol_df = None
+            if quick_mol_file:
+                try:
+                    if quick_mol_file.name.endswith('.csv'):
+                        quick_mol_df = pd.read_csv(quick_mol_file)
+                        smiles_col = 'SMILES' if 'SMILES' in quick_mol_df.columns else quick_mol_df.columns[0]
+                        quick_mol_df['Mol'] = quick_mol_df[smiles_col].apply(
+                            lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
+                        )
+                        quick_mol_df = quick_mol_df[quick_mol_df['Mol'].notna()]
+                    else:
+                        quick_mol_df = PandasTools.LoadSDF(quick_mol_file, molColName='Mol')
+                    
+                    st.success(f"✅ Loaded {len(quick_mol_df)} molecules")
+                except Exception as e:
+                    st.error(f"Error loading molecules: {str(e)}")
+            
+            # Run test button
+            if st.button("🚀 Run Test", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_mol_df is not None)):
+                if quick_smarts and quick_mol_df is not None:
+                    with st.spinner("Testing SMARTS pattern..."):
+                        try:
+                            pattern = Chem.MolFromSmarts(quick_smarts)
+                            if pattern is None:
+                                st.error("❌ Invalid SMARTS pattern")
+                            else:
+                                # Find matches
+                                matches = []
+                                for idx, row in quick_mol_df.iterrows():
+                                    mol = row.get('Mol') or row.get('ROMol')
+                                    if mol and mol.HasSubstructMatch(pattern):
+                                        matches.append((idx, mol, row))
+                                
+                                st.session_state.quick_test_results = {
+                                    'pattern': pattern,
+                                    'smarts': quick_smarts,
+                                    'matches': matches,
+                                    'total': len(quick_mol_df),
+                                    'mol_df': quick_mol_df
+                                }
+                                st.session_state.quick_page_idx = 0
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+        
+        else:  # Single SMILES mode
+            quick_smiles = st.text_input(
+                "SMILES:",
+                placeholder="CCO",
+                help="Paste a single SMILES string"
+            )
+            
+            # Run test button
+            if st.button("🚀 Test Match", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_smiles)):
+                if quick_smarts and quick_smiles:
+                    try:
+                        pattern = Chem.MolFromSmarts(quick_smarts)
+                        mol = Chem.MolFromSmiles(quick_smiles)
+                        
+                        if pattern is None:
+                            st.error("❌ Invalid SMARTS pattern")
+                        elif mol is None:
+                            st.error("❌ Invalid SMILES")
+                        else:
+                            is_match = mol.HasSubstructMatch(pattern)
+                            
+                            col_res1, col_res2 = st.columns([1, 2])
+                            
+                            with col_res1:
+                                if is_match:
+                                    st.success("✅ MATCH")
+                                else:
+                                    st.error("❌ NO MATCH")
+                            
+                            with col_res2:
+                                if is_match:
+                                    match_atoms = mol.GetSubstructMatch(pattern)
+                                    img = Draw.MolToImage(mol, size=(300, 300), highlightAtoms=match_atoms)
+                                else:
+                                    img = Draw.MolToImage(mol, size=(300, 300))
+                                st.image(img, width=300)
+                    
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+        
+        # Display results for file mode
+        if st.session_state.quick_test_results and mol_source == "Upload Molecule File":
+            results = st.session_state.quick_test_results
+            matches = results['matches']
+            total = results['total']
+            
+            st.write("---")
+            st.subheader("📊 Results")
+            
+            # Summary
+            col_r1, col_r2, col_r3 = st.columns(3)
+            with col_r1:
+                st.metric("Total Molecules", total)
+            with col_r2:
+                st.metric("✅ Matches", len(matches))
+            with col_r3:
+                st.metric("Match Rate", f"{len(matches)/total*100:.1f}%")
+            
+            st.write("")
+            
+            if len(matches) > 0:
+                # Pagination
+                per_page = 6
+                total_pages = (len(matches) + per_page - 1) // per_page
+                current_page = st.session_state.quick_page_idx
+                
+                # Display matches
+                start_idx = current_page * per_page
+                end_idx = min(start_idx + per_page, len(matches))
+                page_matches = matches[start_idx:end_idx]
+                
+                cols = st.columns(3)
+                for i, (idx, mol, row) in enumerate(page_matches):
+                    with cols[i % 3]:
+                        match_atoms = mol.GetSubstructMatch(results['pattern'])
+                        img = Draw.MolToImage(mol, size=(150, 150), highlightAtoms=match_atoms)
+                        st.image(img, width=150)
+                        
+                        # Show molecule name if available
+                        if 'Name' in row:
+                            st.caption(row['Name'])
+                        elif 'SMILES' in row:
+                            smiles_short = row['SMILES'][:30] + "..." if len(row['SMILES']) > 30 else row['SMILES']
+                            st.caption(smiles_short)
+                
+                # Pagination controls
+                if total_pages > 1:
+                    st.write("")
+                    col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
+                    
+                    with col_p1:
+                        if st.button("⬅️ Previous", disabled=(current_page == 0), use_container_width=True):
+                            st.session_state.quick_page_idx -= 1
+                            st.rerun()
+                    
+                    with col_p2:
+                        st.write(f"Page {current_page + 1} of {total_pages}")
+                    
+                    with col_p3:
+                        if st.button("Next ➡️", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                            st.session_state.quick_page_idx += 1
+                            st.rerun()
+                
+                # Export matches
+                st.write("")
+                if st.button("📥 Export Matches", use_container_width=True):
+                    # Create export dataframe
+                    match_indices = [idx for idx, _, _ in matches]
+                    export_df = results['mol_df'].iloc[match_indices].copy()
+                    
+                    # Remove Mol column for CSV export
+                    export_cols = [col for col in export_df.columns if col not in ['Mol', 'ROMol']]
+                    
+                    # Add SMILES if not present
+                    if 'SMILES' not in export_cols:
+                        export_df['SMILES'] = export_df['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')
+                        export_cols = ['SMILES'] + export_cols
+                    
+                    st.download_button(
+                        "📥 Download Matches CSV",
+                        export_df[export_cols].to_csv(index=False),
+                        "smarts_matches.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("No matches found for this SMARTS pattern")
+
 
 # ============================================================================
 # MODE 3: GEN AI FILTER (NEW!)
