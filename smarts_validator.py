@@ -172,64 +172,196 @@ st.divider()
 # ============================================================================
 
 if mode == "Visualizer":
-    uploaded_file = st.file_uploader("📁 Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
+    # Create tabs for different input methods
+    tab1, tab2 = st.tabs(["📁 CSV Upload", "✍️ Single SMARTS"])
     
-    if uploaded_file:
-        # Detect new file uploads
-        current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+    # ========================================================================
+    # TAB 1: CSV UPLOAD (Original functionality)
+    # ========================================================================
+    with tab1:
+        uploaded_file = st.file_uploader("Upload SMARTS CSV", type=['csv'], label_visibility="collapsed")
         
-        if st.session_state.uploaded_file_name != current_file_id:
-            try:
-                df = pd.read_csv(uploaded_file)
-                if 'SMARTS' not in df.columns:
-                    df.columns = ['SMARTS'] + list(df.columns[1:])
-                st.session_state.smarts_data = df
-                st.session_state.current_idx = 0
-                st.session_state.decisions = {}
-                st.session_state.uploaded_file_name = current_file_id
-            except Exception as e:
-                st.error(f"Parse error: {str(e)}")
-                st.stop()
-        
-        df = st.session_state.smarts_data
-        total = len(df)
-        current = st.session_state.current_idx
-        progress = len(st.session_state.decisions) / total if total > 0 else 0
-        
-        st.progress(progress, text=f"Pattern {current + 1}/{total}")
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.metric("✓", f"{len(st.session_state.decisions)}/{total}", label_visibility="collapsed")
-        with col2:
-            st.metric("🟢", sum(1 for d in st.session_state.decisions.values() if d == "OK"), label_visibility="collapsed")
-        with col3:
-            st.metric("🟡", sum(1 for d in st.session_state.decisions.values() if d == "Yellow"), label_visibility="collapsed")
-        with col4:
-            st.metric("🟠", sum(1 for d in st.session_state.decisions.values() if d == "Amber"), label_visibility="collapsed")
-        with col5:
-            st.metric("🔴", sum(1 for d in st.session_state.decisions.values() if d == "Red"), label_visibility="collapsed")
-        
-        st.write("")
-        
-        if current < total:
-            col_main, col_side = st.columns([2.5, 1])
+        if uploaded_file:
+            # Detect new file uploads
+            current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
             
-            with col_main:
-                smarts_pattern = df.iloc[current]['SMARTS']
-                st.code(smarts_pattern, language='text')
-                
-                if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
-                    st.caption(df.iloc[current]['Description'])
-                
+            if st.session_state.uploaded_file_name != current_file_id:
                 try:
-                    pattern = Chem.MolFromSmarts(smarts_pattern)
-                    if pattern is None:
-                        st.error("⚠️ Invalid SMARTS")
-                    else:
-                        image_displayed = False
-                        if use_smartsplus and st.session_state.api_key:
-                            smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
+                    df = pd.read_csv(uploaded_file)
+                    if 'SMARTS' not in df.columns:
+                        df.columns = ['SMARTS'] + list(df.columns[1:])
+                    st.session_state.smarts_data = df
+                    st.session_state.current_idx = 0
+                    st.session_state.decisions = {}
+                    st.session_state.uploaded_file_name = current_file_id
+                except Exception as e:
+                    st.error(f"Parse error: {str(e)}")
+                    st.stop()
+            
+            df = st.session_state.smarts_data
+            total = len(df)
+            current = st.session_state.current_idx
+            progress = len(st.session_state.decisions) / total if total > 0 else 0
+            
+            st.progress(progress, text=f"Pattern {current + 1}/{total}")
+            
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                st.metric("✓", f"{len(st.session_state.decisions)}/{total}", label_visibility="collapsed")
+            with col2:
+                st.metric("🟢", sum(1 for d in st.session_state.decisions.values() if d == "OK"), label_visibility="collapsed")
+            with col3:
+                st.metric("🟡", sum(1 for d in st.session_state.decisions.values() if d == "Yellow"), label_visibility="collapsed")
+            with col4:
+                st.metric("🟠", sum(1 for d in st.session_state.decisions.values() if d == "Amber"), label_visibility="collapsed")
+            with col5:
+                st.metric("🔴", sum(1 for d in st.session_state.decisions.values() if d == "Red"), label_visibility="collapsed")
+            
+            st.write("")
+            
+            if current < total:
+                col_main, col_side = st.columns([2.5, 1])
+                
+                with col_main:
+                    smarts_pattern = df.iloc[current]['SMARTS']
+                    st.code(smarts_pattern, language='text')
+                    
+                    if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
+                        st.caption(df.iloc[current]['Description'])
+                    
+                    try:
+                        pattern = Chem.MolFromSmarts(smarts_pattern)
+                        if pattern is None:
+                            st.error("⚠️ Invalid SMARTS")
+                        else:
+                            image_displayed = False
+                            if use_smartsplus and st.session_state.api_key:
+                                smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
+                                if smartsplus_svg:
+                                    # Remove width/height attributes so viewBox controls scaling
+                                    import re
+                                    svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
+                                    svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
+                                    
+                                    # Wrap in 800px container
+                                    scaled_svg = f"""
+                                    <div style="width: 800px; max-width: 100%;">
+                                        {svg_fixed}
+                                    </div>
+                                    """
+                                    st.markdown(scaled_svg, unsafe_allow_html=True)
+                                    st.caption("🎨 SMARTS.plus")
+                                    image_displayed = True
+                            
+                            if not image_displayed:
+                                img = Draw.MolToImage(pattern, size=(350, 280))
+                                st.image(img, width=350)
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                
+                with col_side:
+                    if current in st.session_state.decisions:
+                        color_map = {"OK": "🟢", "Yellow": "🟡", "Amber": "🟠", "Red": "🔴"}
+                        st.info(f"{color_map.get(st.session_state.decisions[current], '')} {st.session_state.decisions[current]}")
+                    
+                    col_b1, col_b2 = st.columns(2)
+                    with col_b1:
+                        if st.button("🟢 OK", use_container_width=True, key="ok"):
+                            st.session_state.decisions[current] = "OK"
+                            if current < total - 1:
+                                st.session_state.current_idx += 1
+                            st.rerun()
+                        if st.button("🟠 Amber", use_container_width=True, key="amber"):
+                            st.session_state.decisions[current] = "Amber"
+                            if current < total - 1:
+                                st.session_state.current_idx += 1
+                            st.rerun()
+                    with col_b2:
+                        if st.button("🟡 Yellow", use_container_width=True, key="yellow"):
+                            st.session_state.decisions[current] = "Yellow"
+                            if current < total - 1:
+                                st.session_state.current_idx += 1
+                            st.rerun()
+                        if st.button("🔴 Red", use_container_width=True, key="red"):
+                            st.session_state.decisions[current] = "Red"
+                            if current < total - 1:
+                                st.session_state.current_idx += 1
+                            st.rerun()
+                    
+                    st.write("")
+                    
+                    col_n1, col_n2 = st.columns(2)
+                    with col_n1:
+                        if st.button("⬅️", disabled=(current == 0), use_container_width=True):
+                            st.session_state.current_idx -= 1
+                            st.rerun()
+                    with col_n2:
+                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True):
+                            st.session_state.current_idx += 1
+                            st.rerun()
+                    
+                    jump_to = st.number_input("Go to #", 1, total, current + 1, key='jump', label_visibility="collapsed")
+                    if st.button("Jump", use_container_width=True):
+                        st.session_state.current_idx = jump_to - 1
+                        st.rerun()
+            
+            else:
+                st.success("🎉 Review complete!")
+            
+            if len(st.session_state.decisions) > 0:
+                with st.expander("📥 Export Results"):
+                    results_df = df.copy()
+                    results_df['Decision'] = results_df.index.map(
+                        lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED")
+                    )
+                    
+                    col_e1, col_e2, col_e3 = st.columns(3)
+                    with col_e1:
+                        st.download_button("📥 All", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
+                    with col_e2:
+                        concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
+                        if len(concerning) > 0:
+                            st.download_button("⚠️ Concerning", concerning.to_csv(index=False), "concerning.csv", "text/csv", use_container_width=True)
+                    with col_e3:
+                        ok_df = results_df[results_df['Decision'] == 'OK']
+                        if len(ok_df) > 0:
+                            st.download_button("✅ OK", ok_df.to_csv(index=False), "ok.csv", "text/csv", use_container_width=True)
+        
+        else:
+            st.info("Upload a CSV with SMARTS patterns to begin")
+    
+    # ========================================================================
+    # TAB 2: SINGLE SMARTS PASTE
+    # ========================================================================
+    with tab2:
+        st.write("**Paste a SMARTS pattern to visualize:**")
+        
+        single_smarts = st.text_area(
+            "SMARTS Pattern:",
+            height=100,
+            placeholder="Example: c1ccccc1 (benzene ring)",
+            key="single_smarts_input"
+        )
+        
+        if single_smarts:
+            single_smarts = single_smarts.strip()
+            
+            st.write("")
+            st.code(single_smarts, language='text')
+            st.write("")
+            
+            try:
+                pattern = Chem.MolFromSmarts(single_smarts)
+                if pattern is None:
+                    st.error("⚠️ Invalid SMARTS pattern")
+                else:
+                    st.success("✅ Valid SMARTS pattern")
+                    
+                    # Display visualization
+                    image_displayed = False
+                    if use_smartsplus and st.session_state.api_key:
+                        with st.spinner("Rendering with SMARTS.plus..."):
+                            smartsplus_svg = get_smartsplus_image(single_smarts, st.session_state.api_key)
                             if smartsplus_svg:
                                 # Remove width/height attributes so viewBox controls scaling
                                 import re
@@ -245,83 +377,16 @@ if mode == "Visualizer":
                                 st.markdown(scaled_svg, unsafe_allow_html=True)
                                 st.caption("🎨 SMARTS.plus")
                                 image_displayed = True
-                        
-                        if not image_displayed:
-                            img = Draw.MolToImage(pattern, size=(350, 280))
-                            st.image(img, width=350)
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
-            
-            with col_side:
-                if current in st.session_state.decisions:
-                    color_map = {"OK": "🟢", "Yellow": "🟡", "Amber": "🟠", "Red": "🔴"}
-                    st.info(f"{color_map.get(st.session_state.decisions[current], '')} {st.session_state.decisions[current]}")
-                
-                col_b1, col_b2 = st.columns(2)
-                with col_b1:
-                    if st.button("🟢 OK", use_container_width=True, key="ok"):
-                        st.session_state.decisions[current] = "OK"
-                        if current < total - 1:
-                            st.session_state.current_idx += 1
-                        st.rerun()
-                    if st.button("🟠 Amber", use_container_width=True, key="amber"):
-                        st.session_state.decisions[current] = "Amber"
-                        if current < total - 1:
-                            st.session_state.current_idx += 1
-                        st.rerun()
-                with col_b2:
-                    if st.button("🟡 Yellow", use_container_width=True, key="yellow"):
-                        st.session_state.decisions[current] = "Yellow"
-                        if current < total - 1:
-                            st.session_state.current_idx += 1
-                        st.rerun()
-                    if st.button("🔴 Red", use_container_width=True, key="red"):
-                        st.session_state.decisions[current] = "Red"
-                        if current < total - 1:
-                            st.session_state.current_idx += 1
-                        st.rerun()
-                
-                st.write("")
-                
-                col_n1, col_n2 = st.columns(2)
-                with col_n1:
-                    if st.button("⬅️", disabled=(current == 0), use_container_width=True):
-                        st.session_state.current_idx -= 1
-                        st.rerun()
-                with col_n2:
-                    if st.button("➡️", disabled=(current >= total - 1), use_container_width=True):
-                        st.session_state.current_idx += 1
-                        st.rerun()
-                
-                jump_to = st.number_input("Go to #", 1, total, current + 1, key='jump', label_visibility="collapsed")
-                if st.button("Jump", use_container_width=True):
-                    st.session_state.current_idx = jump_to - 1
-                    st.rerun()
-        
+                    
+                    if not image_displayed:
+                        img = Draw.MolToImage(pattern, size=(400, 320))
+                        st.image(img, width=400)
+                        st.caption("🧪 RDKit")
+                    
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
         else:
-            st.success("🎉 Review complete!")
-        
-        if len(st.session_state.decisions) > 0:
-            with st.expander("📥 Export Results"):
-                results_df = df.copy()
-                results_df['Decision'] = results_df.index.map(
-                    lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED")
-                )
-                
-                col_e1, col_e2, col_e3 = st.columns(3)
-                with col_e1:
-                    st.download_button("📥 All", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
-                with col_e2:
-                    concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
-                    if len(concerning) > 0:
-                        st.download_button("⚠️ Concerning", concerning.to_csv(index=False), "concerning.csv", "text/csv", use_container_width=True)
-                with col_e3:
-                    ok_df = results_df[results_df['Decision'] == 'OK']
-                    if len(ok_df) > 0:
-                        st.download_button("✅ OK", ok_df.to_csv(index=False), "ok.csv", "text/csv", use_container_width=True)
-    
-    else:
-        st.info("Upload a CSV with SMARTS patterns to begin")
+            st.info("👆 Paste a SMARTS pattern above to visualize it")
 
 # ============================================================================
 # MODE 2: VALIDATOR
