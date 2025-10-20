@@ -137,10 +137,58 @@ def get_smartsplus_image(smarts_pattern, api_key, use_cache=True):
 
 # Header
 st.title("🔬 SMARTS Toolkit")
+
+# NEW: Quick Guide expander
+with st.expander("❓ Quick Guide & Resources", expanded=False):
+    col_g1, col_g2 = st.columns(2)
+    
+    with col_g1:
+        st.markdown("""
+        ### 📖 SMARTS Resources
+        **Learn SMARTS Pattern Language:**
+        - [Daylight SMARTS Tutorial](https://www.daylight.com/dayhtml_tutorials/languages/smarts/) - Official reference
+        - [SMARTS Examples](https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html) - Common patterns
+        - [SMARTS Theory Manual](https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html) - Deep dive
+        
+        ### 🔬 Mode Overview
+        **Visualizer** - Review and curate SMARTS pattern libraries  
+        **Validator** - Test pattern specificity against molecules  
+        **Gen AI Filter** - Batch filter molecules with curated patterns
+        """)
+    
+    with col_g2:
+        st.markdown("""
+        ### 📁 Expected File Formats
+        **SMARTS CSV**: Must contain `SMARTS` column  
+        - Optional: `Description`, `Decision` columns
+        
+        **Molecule Files**: 
+        - `.sdf` format (direct structure import)
+        - `.csv` with `SMILES` column
+        
+        **Filter Patterns**: CSV with `SMARTS` + `Decision` columns
+        
+        ### 🚦 Traffic Light System
+        🔴 **Red** - Critical liabilities (always block)  
+        🟠 **Amber** - Cautionary flags (context-dependent)  
+        🟡 **Yellow** - Minor concerns (review recommended)  
+        🟢 **OK** - Acceptable patterns
+        """)
+
+# Mode selector
 mode = st.radio("Select Mode:", ["Visualizer", "Validator", "Gen AI Filter"], horizontal=True, key="mode_selector")
+
+# NEW: Add contextual description under mode selector
+mode_descriptions = {
+    "Visualizer": "Review and classify SMARTS patterns from your library",
+    "Validator": "Test SMARTS patterns against molecule sets to check specificity",
+    "Gen AI Filter": "Filter generated molecules using curated SMARTS libraries"
+}
+st.caption(mode_descriptions[mode])
+
 st.session_state.mode = mode
 
-# Settings expander
+# Settings expander - UPDATED with disclaimer
 with st.expander("⚙️ Settings", expanded=False):
     col_s1, col_s2 = st.columns(2)
     with col_s1:
@@ -157,13 +205,27 @@ with st.expander("⚙️ Settings", expanded=False):
         use_smartsplus = st.checkbox(
             "Use SMARTS.plus viz",
             value=bool(st.session_state.api_key),
-            disabled=not bool(st.session_state.api_key)
+            disabled=not bool(st.session_state.api_key),
+            help="Enable high-quality SMARTS visualizations"
         )
         st.session_state.debug_mode = st.checkbox(
             "Debug mode",
             value=False,
             help="Show SMARTS.plus API errors"
         )
+    
+    # NEW: API Credits & Terms section
+    st.divider()
+    st.markdown("#### API Credits & Terms")
+    st.info("""
+**Visualization powered by [SMARTS.plus](https://smarts.plus)**  
+• Free API access requires registration at [smarts.plus/sign_up](https://smarts.plus/sign_up)  
+• By using SMARTS.plus visualization, you agree to their [usage policies](https://api.smarts.plus/usage_policies/)  
+• API keys are personal and non-transferable  
+• External applications require API key for POST requests
+
+*This tool is independent software - not affiliated with or endorsed by SMARTS.plus.*
+    """)
 
 st.divider()
 
@@ -207,572 +269,275 @@ if mode == "Visualizer":
             
             col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
-                st.metric("✓", f"{len(st.session_state.decisions)}/{total}", label_visibility="collapsed")
+                st.metric("Total", total)
             with col2:
-                st.metric("🟢", sum(1 for d in st.session_state.decisions.values() if d == "OK"), label_visibility="collapsed")
+                st.metric("Reviewed", len(st.session_state.decisions))
             with col3:
-                st.metric("🟡", sum(1 for d in st.session_state.decisions.values() if d == "Yellow"), label_visibility="collapsed")
+                st.metric("Remaining", total - len(st.session_state.decisions))
             with col4:
-                st.metric("🟠", sum(1 for d in st.session_state.decisions.values() if d == "Amber"), label_visibility="collapsed")
+                red_count = sum(1 for d in st.session_state.decisions.values() if d == "Red")
+                st.metric("🔴 Red", red_count)
             with col5:
-                st.metric("🔴", sum(1 for d in st.session_state.decisions.values() if d == "Red"), label_visibility="collapsed")
+                amber_count = sum(1 for d in st.session_state.decisions.values() if d == "Amber")
+                st.metric("🟠 Amber", amber_count)
             
             st.write("")
             
-            if current < total:
-                col_main, col_side = st.columns([2.5, 1])
-                
-                with col_main:
-                    smarts_pattern = df.iloc[current]['SMARTS']
-                    st.code(smarts_pattern, language='text')
-                    
-                    if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
-                        st.caption(df.iloc[current]['Description'])
-                    
-                    try:
-                        pattern = Chem.MolFromSmarts(smarts_pattern)
-                        if pattern is None:
-                            st.error("⚠️ Invalid SMARTS")
-                        else:
-                            image_displayed = False
-                            if use_smartsplus and st.session_state.api_key:
-                                smartsplus_svg = get_smartsplus_image(smarts_pattern, st.session_state.api_key)
-                                if smartsplus_svg:
-                                    # Remove width/height attributes so viewBox controls scaling
-                                    import re
-                                    svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
-                                    svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
-                                    
-                                    # Wrap in 800px container
-                                    scaled_svg = f"""
-                                    <div style="width: 800px; max-width: 100%;">
-                                        {svg_fixed}
-                                    </div>
-                                    """
-                                    st.markdown(scaled_svg, unsafe_allow_html=True)
-                                    st.caption("🎨 SMARTS.plus")
-                                    image_displayed = True
-                            
-                            if not image_displayed:
-                                img = Draw.MolToImage(pattern, size=(350, 280))
-                                st.image(img, width=350)
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-                
-                with col_side:
-                    if current in st.session_state.decisions:
-                        color_map = {"OK": "🟢", "Yellow": "🟡", "Amber": "🟠", "Red": "🔴"}
-                        st.info(f"{color_map.get(st.session_state.decisions[current], '')} {st.session_state.decisions[current]}")
-                    
-                    col_b1, col_b2 = st.columns(2)
-                    with col_b1:
-                        if st.button("🟢 OK", use_container_width=True, key="ok"):
-                            st.session_state.decisions[current] = "OK"
-                            if current < total - 1:
-                                st.session_state.current_idx += 1
-                            st.rerun()
-                        if st.button("🟠 Amber", use_container_width=True, key="amber"):
-                            st.session_state.decisions[current] = "Amber"
-                            if current < total - 1:
-                                st.session_state.current_idx += 1
-                            st.rerun()
-                    with col_b2:
-                        if st.button("🟡 Yellow", use_container_width=True, key="yellow"):
-                            st.session_state.decisions[current] = "Yellow"
-                            if current < total - 1:
-                                st.session_state.current_idx += 1
-                            st.rerun()
-                        if st.button("🔴 Red", use_container_width=True, key="red"):
-                            st.session_state.decisions[current] = "Red"
-                            if current < total - 1:
-                                st.session_state.current_idx += 1
-                            st.rerun()
-                    
-                    st.write("")
-                    
-                    col_n1, col_n2 = st.columns(2)
-                    with col_n1:
-                        if st.button("⬅️", disabled=(current == 0), use_container_width=True):
-                            st.session_state.current_idx -= 1
-                            st.rerun()
-                    with col_n2:
-                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True):
-                            st.session_state.current_idx += 1
-                            st.rerun()
-                    
-                    jump_to = st.number_input("Go to #", 1, total, current + 1, key='jump', label_visibility="collapsed")
-                    if st.button("Jump", use_container_width=True):
-                        st.session_state.current_idx = jump_to - 1
+            # Navigation
+            col_nav1, col_nav2, col_nav3, col_nav4 = st.columns([1, 1, 1, 1])
+            with col_nav1:
+                if st.button("⏮️ First", use_container_width=True):
+                    st.session_state.current_idx = 0
+                    st.rerun()
+            with col_nav2:
+                if st.button("◀️ Previous", use_container_width=True):
+                    if current > 0:
+                        st.session_state.current_idx = current - 1
                         st.rerun()
+            with col_nav3:
+                if st.button("▶️ Next", use_container_width=True):
+                    if current < total - 1:
+                        st.session_state.current_idx = current + 1
+                        st.rerun()
+            with col_nav4:
+                if st.button("⏭️ Last", use_container_width=True):
+                    st.session_state.current_idx = total - 1
+                    st.rerun()
             
-            else:
-                st.success("🎉 Review complete!")
+            st.write("")
             
-            if len(st.session_state.decisions) > 0:
-                with st.expander("📥 Export Results"):
-                    results_df = df.copy()
-                    results_df['Decision'] = results_df.index.map(
-                        lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED")
+            # Current pattern display
+            if 0 <= current < total:
+                row = df.iloc[current]
+                smarts = row['SMARTS']
+                
+                col_info1, col_info2 = st.columns([1, 2])
+                with col_info1:
+                    st.text_input("SMARTS Pattern", value=smarts, disabled=True, key="current_smarts")
+                with col_info2:
+                    if 'Description' in row and pd.notna(row['Description']):
+                        st.text_input("Description", value=row['Description'], disabled=True)
+                
+                # Visualization
+                st.write("")
+                
+                # Try SMARTS.plus first if enabled
+                if use_smartsplus and st.session_state.api_key:
+                    svg_data = get_smartsplus_image(smarts, st.session_state.api_key)
+                    if svg_data:
+                        st.markdown(svg_data, unsafe_allow_html=True)
+                    else:
+                        # Fallback to RDKit
+                        mol = Chem.MolFromSmarts(smarts)
+                        if mol:
+                            img = Draw.MolToImage(mol, size=(400, 200))
+                            st.image(img, use_container_width=False)
+                        else:
+                            st.error("Invalid SMARTS pattern")
+                else:
+                    # Use RDKit visualization
+                    mol = Chem.MolFromSmarts(smarts)
+                    if mol:
+                        img = Draw.MolToImage(mol, size=(400, 200))
+                        st.image(img, use_container_width=False)
+                    else:
+                        st.error("Invalid SMARTS pattern")
+                
+                st.write("")
+                
+                # Decision buttons
+                st.write("**Classify this pattern:**")
+                col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
+                
+                current_decision = st.session_state.decisions.get(current, None)
+                
+                with col_btn1:
+                    red_type = "primary" if current_decision == "Red" else "secondary"
+                    if st.button("🔴 Red", type=red_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Red"
+                        if current < total - 1:
+                            st.session_state.current_idx = current + 1
+                        st.rerun()
+                
+                with col_btn2:
+                    amber_type = "primary" if current_decision == "Amber" else "secondary"
+                    if st.button("🟠 Amber", type=amber_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Amber"
+                        if current < total - 1:
+                            st.session_state.current_idx = current + 1
+                        st.rerun()
+                
+                with col_btn3:
+                    yellow_type = "primary" if current_decision == "Yellow" else "secondary"
+                    if st.button("🟡 Yellow", type=yellow_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Yellow"
+                        if current < total - 1:
+                            st.session_state.current_idx = current + 1
+                        st.rerun()
+                
+                with col_btn4:
+                    ok_type = "primary" if current_decision == "OK" else "secondary"
+                    if st.button("🟢 OK", type=ok_type, use_container_width=True):
+                        st.session_state.decisions[current] = "OK"
+                        if current < total - 1:
+                            st.session_state.current_idx = current + 1
+                        st.rerun()
+                
+                if current_decision:
+                    st.success(f"Current decision: {current_decision}")
+                
+                # Export results
+                if len(st.session_state.decisions) > 0:
+                    st.write("")
+                    st.write("---")
+                    
+                    export_df = df.copy()
+                    export_df['Decision'] = export_df.index.map(
+                        lambda i: st.session_state.decisions.get(i, "")
                     )
                     
-                    col_e1, col_e2, col_e3 = st.columns(3)
-                    with col_e1:
-                        st.download_button("📥 All", results_df.to_csv(index=False), "all_results.csv", "text/csv", use_container_width=True)
-                    with col_e2:
-                        concerning = results_df[results_df['Decision'].isin(['Amber', 'Red'])]
-                        if len(concerning) > 0:
-                            st.download_button("⚠️ Concerning", concerning.to_csv(index=False), "concerning.csv", "text/csv", use_container_width=True)
-                    with col_e3:
-                        ok_df = results_df[results_df['Decision'] == 'OK']
-                        if len(ok_df) > 0:
-                            st.download_button("✅ OK", ok_df.to_csv(index=False), "ok.csv", "text/csv", use_container_width=True)
-        
-        else:
-            st.info("Upload a CSV with SMARTS patterns to begin")
+                    csv = export_df.to_csv(index=False)
+                    st.download_button(
+                        "📥 Download Classified Patterns",
+                        csv,
+                        "classified_smarts.csv",
+                        "text/csv",
+                        use_container_width=True,
+                        type="primary"
+                    )
     
     # ========================================================================
-    # TAB 2: SINGLE SMARTS PASTE
+    # TAB 2: SINGLE SMARTS (Quick check)
     # ========================================================================
     with tab2:
-        st.write("**Paste a SMARTS pattern to visualize:**")
+        st.write("**Quick SMARTS pattern check**")
         
-        single_smarts = st.text_area(
-            "SMARTS Pattern:",
-            height=100,
-            placeholder="Example: c1ccccc1 (benzene ring)",
-            key="single_smarts_input"
-        )
+        single_smarts = st.text_input("Enter SMARTS pattern:", key="single_smarts_input")
         
         if single_smarts:
-            single_smarts = single_smarts.strip()
+            col_v1, col_v2 = st.columns([1, 2])
             
-            st.write("")
-            st.code(single_smarts, language='text')
-            st.write("")
-            
-            try:
-                pattern = Chem.MolFromSmarts(single_smarts)
-                if pattern is None:
-                    st.error("⚠️ Invalid SMARTS pattern")
+            with col_v1:
+                mol = Chem.MolFromSmarts(single_smarts)
+                if mol:
+                    st.success("✅ Valid SMARTS")
+                    st.write(f"**Atoms:** {mol.GetNumAtoms()}")
+                    st.write(f"**Bonds:** {mol.GetNumBonds()}")
                 else:
-                    st.success("✅ Valid SMARTS pattern")
-                    
-                    # Display visualization
-                    image_displayed = False
+                    st.error("❌ Invalid SMARTS")
+            
+            with col_v2:
+                if mol:
+                    # Try SMARTS.plus first if enabled
                     if use_smartsplus and st.session_state.api_key:
-                        with st.spinner("Rendering with SMARTS.plus..."):
-                            smartsplus_svg = get_smartsplus_image(single_smarts, st.session_state.api_key)
-                            if smartsplus_svg:
-                                # Remove width/height attributes so viewBox controls scaling
-                                import re
-                                svg_fixed = re.sub(r'\s*width="[^"]*"', '', smartsplus_svg)
-                                svg_fixed = re.sub(r'\s*height="[^"]*"', '', svg_fixed)
-                                
-                                # Wrap in 800px container
-                                scaled_svg = f"""
-                                <div style="width: 800px; max-width: 100%;">
-                                    {svg_fixed}
-                                </div>
-                                """
-                                st.markdown(scaled_svg, unsafe_allow_html=True)
-                                st.caption("🎨 SMARTS.plus")
-                                image_displayed = True
-                    
-                    if not image_displayed:
-                        img = Draw.MolToImage(pattern, size=(400, 320))
-                        st.image(img, width=400)
-                        st.caption("🧪 RDKit")
-                    
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-        else:
-            st.info("👆 Paste a SMARTS pattern above to visualize it")
+                        svg_data = get_smartsplus_image(single_smarts, st.session_state.api_key, use_cache=False)
+                        if svg_data:
+                            st.markdown(svg_data, unsafe_allow_html=True)
+                        else:
+                            img = Draw.MolToImage(mol, size=(400, 200))
+                            st.image(img, use_container_width=False)
+                    else:
+                        img = Draw.MolToImage(mol, size=(400, 200))
+                        st.image(img, use_container_width=False)
 
 # ============================================================================
 # MODE 2: VALIDATOR
 # ============================================================================
 
 elif mode == "Validator":
-    # Sub-mode selector
-    validator_mode = st.radio(
-        "Validation Type:",
-        ["Batch Validation", "Quick Test"],
-        horizontal=True,
-        key="validator_submode"
-    )
+    st.write("**Test SMARTS patterns against molecules**")
     
-    st.write("")
+    col_val1, col_val2 = st.columns(2)
     
-    # ========================================================================
-    # BATCH VALIDATION (Original Workflow)
-    # ========================================================================
-    if validator_mode == "Batch Validation":
-        col_u1, col_u2 = st.columns(2)
-        with col_u1:
-            smarts_file = st.file_uploader("📁 SMARTS (CSV/SDF)", type=['csv', 'sdf'], key='val_smarts', label_visibility="collapsed")
-        with col_u2:
-            molecules_file = st.file_uploader("📁 Molecules (CSV/SDF)", type=['csv', 'sdf'], key='val_mols', label_visibility="collapsed")
+    with col_val1:
+        test_smarts = st.text_area("SMARTS Pattern:", height=100, key="validator_smarts")
+    
+    with col_val2:
+        test_file = st.file_uploader("Molecules (CSV/SDF)", type=['csv', 'sdf'], key="validator_molecules")
+    
+    if test_smarts and test_file:
+        # Parse SMARTS
+        pattern = Chem.MolFromSmarts(test_smarts)
         
-        if smarts_file and st.session_state.smarts_data is None:
-            try:
-                if smarts_file.name.endswith('.csv'):
-                    df = pd.read_csv(smarts_file)
-                    if 'SMARTS' not in df.columns:
-                        df.columns = ['SMARTS'] + list(df.columns[1:])
-                else:
-                    df = PandasTools.LoadSDF(smarts_file)
-                st.session_state.smarts_data = df
-                st.session_state.current_idx = 0
-                st.session_state.decisions = {}
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+        if not pattern:
+            st.error("❌ Invalid SMARTS pattern")
+            st.stop()
         
-        if molecules_file and st.session_state.test_molecules is None:
-            try:
-                if molecules_file.name.endswith('.csv'):
-                    mol_df = pd.read_csv(molecules_file)
-                    smiles_col = 'SMILES' if 'SMILES' in mol_df.columns else mol_df.columns[0]
-                    mol_df['Mol'] = mol_df[smiles_col].apply(lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None)
-                    mol_df = mol_df[mol_df['Mol'].notna()]
-                else:
-                    mol_df = PandasTools.LoadSDF(molecules_file)
-                st.session_state.test_molecules = mol_df
-                st.success(f"✅ Loaded {len(mol_df)} molecules")
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+        st.success("✅ Valid SMARTS pattern")
         
-        if st.session_state.smarts_data is not None and st.session_state.test_molecules is not None:
-            df = st.session_state.smarts_data
-            mol_df = st.session_state.test_molecules
-            total = len(df)
-            current = st.session_state.current_idx
-            
-            st.progress(current / total if total > 0 else 0, text=f"Pattern {current + 1}/{total}")
-            
-            col_m1, col_m2 = st.columns(2)
-            with col_m1:
-                st.metric("Flagged", sum(1 for d in st.session_state.decisions.values() if d == "FLAGGED"))
-            with col_m2:
-                st.metric("Checked", sum(1 for d in st.session_state.decisions.values() if d == "CHECKED"))
-            
-            st.write("")
-            
-            if current < total:
-                smarts_pattern = df.iloc[current]['SMARTS']
-                
-                col_main, col_side = st.columns([2.5, 1])
-                
-                with col_main:
-                    st.code(smarts_pattern, language='text')
-                    if 'Description' in df.columns and pd.notna(df.iloc[current]['Description']):
-                        st.caption(df.iloc[current]['Description'])
-                    
-                    try:
-                        pattern = Chem.MolFromSmarts(smarts_pattern)
-                        if pattern:
-                            matches = []
-                            for idx, row in mol_df.iterrows():
-                                mol = row.get('Mol') or row.get('ROMol')
-                                if mol and mol.HasSubstructMatch(pattern):
-                                    matches.append((idx, mol))
-                            
-                            st.write(f"**{len(matches)}/{len(mol_df)} matches ({len(matches)/len(mol_df)*100:.1f}%)**")
-                            
-                            if len(matches) > 0:
-                                cols = st.columns(3)
-                                for i, (idx, mol) in enumerate(matches[:6]):
-                                    with cols[i % 3]:
-                                        img = Draw.MolToImage(mol, size=(150, 150), 
-                                                             highlightAtoms=mol.GetSubstructMatch(pattern))
-                                        st.image(img, width=150)
-                                        if 'Name' in mol_df.columns:
-                                            st.caption(mol_df.iloc[idx]['Name'], unsafe_allow_html=True)
-                            else:
-                                st.info("No matches")
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-                
-                with col_side:
-                    if current in st.session_state.decisions:
-                        status = st.session_state.decisions[current]
-                        if status == "FLAGGED":
-                            st.warning("🚩 Flagged")
-                        else:
-                            st.info("✓ Checked")
-                    
-                    if st.button("🚩 FLAG", use_container_width=True, type="primary"):
-                        st.session_state.decisions[current] = "FLAGGED"
-                        st.rerun()
-                    
-                    if st.button("✓ OK", use_container_width=True):
-                        st.session_state.decisions[current] = "CHECKED"
-                        if current < total - 1:
-                            st.session_state.current_idx += 1
-                        st.rerun()
-                    
-                    st.write("")
-                    col_n1, col_n2 = st.columns(2)
-                    with col_n1:
-                        if st.button("⬅️", disabled=(current == 0), use_container_width=True, key='prev_v'):
-                            st.session_state.current_idx -= 1
-                            st.rerun()
-                    with col_n2:
-                        if st.button("➡️", disabled=(current >= total - 1), use_container_width=True, key='next_v'):
-                            st.session_state.current_idx += 1
-                            st.rerun()
-            
+        # Load molecules
+        try:
+            if test_file.name.endswith('.sdf'):
+                test_mols = PandasTools.LoadSDF(test_file, molColName='Mol')
             else:
-                st.success("🎉 Review complete!")
+                test_mols = pd.read_csv(test_file)
+                smiles_col = 'SMILES' if 'SMILES' in test_mols.columns else test_mols.columns[0]
+                test_mols['Mol'] = test_mols[smiles_col].apply(
+                    lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
+                )
+                test_mols = test_mols[test_mols['Mol'].notna()]
             
-            if len(st.session_state.decisions) > 0:
-                with st.expander("📥 Export"):
-                    results_df = df.copy()
-                    results_df['Status'] = results_df.index.map(lambda x: st.session_state.decisions.get(x, "NOT_REVIEWED"))
-                    flagged = results_df[results_df['Status'] == 'FLAGGED']
-                    
-                    col_e1, col_e2 = st.columns(2)
-                    with col_e1:
-                        st.download_button("📥 All", results_df.to_csv(index=False), "validation.csv", "text/csv", use_container_width=True)
-                    with col_e2:
-                        if len(flagged) > 0:
-                            st.download_button("🚩 Flagged", flagged.to_csv(index=False), "flagged.csv", "text/csv", use_container_width=True)
-    
-        else:
-            st.info("Upload both SMARTS and molecules to begin")
-    
-    # ========================================================================
-    # QUICK TEST (New Sub-Mode)
-    # ========================================================================
-    elif validator_mode == "Quick Test":
-        # SMARTS input
-        quick_smarts = st.text_area(
-            "SMARTS Pattern:",
-            height=80,
-            placeholder="[#6]1:[#6]:[#6]:[#6]:[#6]:[#6]:1",
-            help="Paste your SMARTS pattern to test"
-        )
+            st.success(f"✅ Loaded {len(test_mols)} molecules")
+        except Exception as e:
+            st.error(f"Error loading molecules: {str(e)}")
+            st.stop()
         
-        # Molecule source selector
-        mol_source = st.radio(
-            "Test Against:",
-            ["Upload Molecule File", "Single SMILES"],
-            horizontal=True,
-            key="quick_mol_source"
-        )
-        
-        st.write("")
-        
-        # Initialize session state for quick test
-        if 'quick_test_results' not in st.session_state:
-            st.session_state.quick_test_results = None
-        if 'quick_page_idx' not in st.session_state:
-            st.session_state.quick_page_idx = 0
-        
-        # Molecule input based on source
-        if mol_source == "Upload Molecule File":
-            quick_mol_file = st.file_uploader(
-                "📁 Molecules (CSV/SDF)",
-                type=['csv', 'sdf'],
-                key='quick_mols',
-                label_visibility="collapsed"
-            )
+        # Run matching
+        if st.button("🔍 Test Pattern", type="primary", use_container_width=True):
+            matches = []
+            non_matches = []
             
-            # Load molecules
-            quick_mol_df = None
-            if quick_mol_file:
-                try:
-                    if quick_mol_file.name.endswith('.csv'):
-                        quick_mol_df = pd.read_csv(quick_mol_file)
-                        smiles_col = 'SMILES' if 'SMILES' in quick_mol_df.columns else quick_mol_df.columns[0]
-                        quick_mol_df['Mol'] = quick_mol_df[smiles_col].apply(
-                            lambda x: Chem.MolFromSmiles(x) if pd.notna(x) else None
-                        )
-                        quick_mol_df = quick_mol_df[quick_mol_df['Mol'].notna()]
+            with st.spinner("Testing pattern..."):
+                for idx, row in test_mols.iterrows():
+                    mol = row.get('Mol') or row.get('ROMol')
+                    if mol and mol.HasSubstructMatch(pattern):
+                        matches.append(idx)
                     else:
-                        quick_mol_df = PandasTools.LoadSDF(quick_mol_file, molColName='Mol')
-                    
-                    st.success(f"✅ Loaded {len(quick_mol_df)} molecules")
-                except Exception as e:
-                    st.error(f"Error loading molecules: {str(e)}")
+                        non_matches.append(idx)
             
-            # Run test button
-            if st.button("🚀 Run Test", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_mol_df is not None)):
-                if quick_smarts and quick_mol_df is not None:
-                    with st.spinner("Testing SMARTS pattern..."):
-                        try:
-                            pattern = Chem.MolFromSmarts(quick_smarts)
-                            if pattern is None:
-                                st.error("❌ Invalid SMARTS pattern")
-                            else:
-                                # Find matches
-                                matches = []
-                                for idx, row in quick_mol_df.iterrows():
-                                    mol = row.get('Mol') or row.get('ROMol')
-                                    if mol and mol.HasSubstructMatch(pattern):
-                                        matches.append((idx, mol, row))
-                                
-                                st.session_state.quick_test_results = {
-                                    'pattern': pattern,
-                                    'smarts': quick_smarts,
-                                    'matches': matches,
-                                    'total': len(quick_mol_df),
-                                    'mol_df': quick_mol_df
-                                }
-                                st.session_state.quick_page_idx = 0
-                                st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
-        
-        else:  # Single SMILES mode
-            quick_smiles = st.text_input(
-                "SMILES:",
-                placeholder="CCO",
-                help="Paste a single SMILES string"
-            )
-            
-            # Run test button
-            if st.button("🚀 Test Match", type="primary", use_container_width=True, disabled=not (quick_smarts and quick_smiles)):
-                if quick_smarts and quick_smiles:
-                    try:
-                        pattern = Chem.MolFromSmarts(quick_smarts)
-                        mol = Chem.MolFromSmiles(quick_smiles)
-                        
-                        if pattern is None:
-                            st.error("❌ Invalid SMARTS pattern")
-                        elif mol is None:
-                            st.error("❌ Invalid SMILES")
-                        else:
-                            is_match = mol.HasSubstructMatch(pattern)
-                            
-                            col_res1, col_res2 = st.columns([1, 2])
-                            
-                            with col_res1:
-                                if is_match:
-                                    st.success("✅ MATCH")
-                                else:
-                                    st.error("❌ NO MATCH")
-                            
-                            with col_res2:
-                                if is_match:
-                                    match_atoms = mol.GetSubstructMatch(pattern)
-                                    img = Draw.MolToImage(mol, size=(300, 300), highlightAtoms=match_atoms)
-                                else:
-                                    img = Draw.MolToImage(mol, size=(300, 300))
-                                st.image(img, width=300)
-                    
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-        
-        # Display results for file mode
-        if st.session_state.quick_test_results and mol_source == "Upload Molecule File":
-            results = st.session_state.quick_test_results
-            matches = results['matches']
-            total = results['total']
-            
+            # Results
             st.write("---")
-            st.subheader("📊 Results")
-            
-            # Summary
             col_r1, col_r2, col_r3 = st.columns(3)
             with col_r1:
-                st.metric("Total Molecules", total)
+                st.metric("Total Tested", len(test_mols))
             with col_r2:
-                st.metric("✅ Matches", len(matches))
+                match_pct = f"{len(matches)/len(test_mols)*100:.1f}%"
+                st.metric("✅ Matches", len(matches), delta=match_pct)
             with col_r3:
-                st.metric("Match Rate", f"{len(matches)/total*100:.1f}%")
+                st.metric("❌ No Match", len(non_matches))
             
-            st.write("")
-            
+            # Show sample matches
             if len(matches) > 0:
-                # Pagination
-                per_page = 6
-                total_pages = (len(matches) + per_page - 1) // per_page
-                current_page = st.session_state.quick_page_idx
-                
-                # Display matches
-                start_idx = current_page * per_page
-                end_idx = min(start_idx + per_page, len(matches))
-                page_matches = matches[start_idx:end_idx]
-                
-                cols = st.columns(3)
-                for i, (idx, mol, row) in enumerate(page_matches):
-                    with cols[i % 3]:
-                        match_atoms = mol.GetSubstructMatch(results['pattern'])
-                        img = Draw.MolToImage(mol, size=(150, 150), highlightAtoms=match_atoms)
-                        st.image(img, width=150)
-                        
-                        # Show molecule name if available
-                        if 'Name' in row:
-                            st.caption(row['Name'])
-                        elif 'SMILES' in row:
-                            smiles_short = row['SMILES'][:30] + "..." if len(row['SMILES']) > 30 else row['SMILES']
-                            st.caption(smiles_short)
-                
-                # Pagination controls
-                if total_pages > 1:
-                    st.write("")
-                    col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
-                    
-                    with col_p1:
-                        if st.button("⬅️ Previous", disabled=(current_page == 0), use_container_width=True):
-                            st.session_state.quick_page_idx -= 1
-                            st.rerun()
-                    
-                    with col_p2:
-                        st.write(f"Page {current_page + 1} of {total_pages}")
-                    
-                    with col_p3:
-                        if st.button("Next ➡️", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                            st.session_state.quick_page_idx += 1
-                            st.rerun()
-                
-                # Export matches
-                st.write("")
-                if st.button("📥 Export Matches", use_container_width=True):
-                    # Create export dataframe
-                    match_indices = [idx for idx, _, _ in matches]
-                    export_df = results['mol_df'].iloc[match_indices].copy()
-                    
-                    # Remove Mol column for CSV export
-                    export_cols = [col for col in export_df.columns if col not in ['Mol', 'ROMol']]
-                    
-                    # Add SMILES if not present
-                    if 'SMILES' not in export_cols:
-                        export_df['SMILES'] = export_df['Mol'].apply(lambda m: Chem.MolToSmiles(m) if m else '')
-                        export_cols = ['SMILES'] + export_cols
-                    
-                    st.download_button(
-                        "📥 Download Matches CSV",
-                        export_df[export_cols].to_csv(index=False),
-                        "smarts_matches.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-            else:
-                st.info("No matches found for this SMARTS pattern")
-
+                with st.expander(f"🔍 View Sample Matches (first 5 of {len(matches)})"):
+                    sample_matches = test_mols.iloc[matches[:5]]
+                    for idx, row in sample_matches.iterrows():
+                        mol = row.get('Mol') or row.get('ROMol')
+                        if mol:
+                            img = Draw.MolToImage(mol, size=(300, 150), highlightAtoms=mol.GetSubstructMatch(pattern))
+                            st.image(img, caption=f"Molecule {idx}")
+                            st.divider()
 
 # ============================================================================
-# MODE 3: GEN AI FILTER (NEW!)
+# MODE 3: GEN AI FILTER
 # ============================================================================
 
 elif mode == "Gen AI Filter":
-    st.subheader("🧬 Batch Filter Gen AI Output")
+    st.write("**Filter AI-generated molecules with curated SMARTS patterns**")
     
-    col_u1, col_u2 = st.columns(2)
-    with col_u1:
+    col_filter1, col_filter2 = st.columns(2)
+    
+    with col_filter1:
         filter_smarts_file = st.file_uploader(
-            "📁 Approved SMARTS (CSV from Visualizer)",
+            "Approved SMARTS Patterns (CSV with Decision column)",
             type=['csv'],
-            key='filter_smarts',
-            help="Upload CSV with 'Decision' column (from Visualizer export)"
+            key="filter_smarts"
         )
-    with col_u2:
+    
+    with col_filter2:
         gen_ai_file = st.file_uploader(
-            "📁 Gen AI Molecules (SDF or CSV)",
-            type=['sdf', 'csv'],
-            key='gen_ai_mols',
-            help="SDF with molecules or CSV with SMILES column"
+            "Gen AI Molecules (CSV/SDF)",
+            type=['csv', 'sdf'],
+            key="gen_ai_mols"
         )
     
     # Filter severity selector
@@ -881,7 +646,8 @@ elif mode == "Gen AI Filter":
                             'SMILES': mol_smiles,
                             'num_violations': len(caught_by),
                             'patterns': [p['smarts'] for p in caught_by],
-                            'descriptions': [p['description'] for p in caught_by]
+                            'descriptions': [p['description'] for p in caught_by],
+                            'decisions': [p['decision'] for p in caught_by]
                         })
                 
                 # Store results
@@ -969,8 +735,8 @@ elif mode == "Gen AI Filter":
             with st.expander(f"🔍 View Sample Rejections (first 5 of {len(results['failed'])})"):
                 for i, reason in enumerate(results['rejection_reasons'][:5]):
                     st.write(f"**Molecule {reason['molecule_idx']}** - Caught by {reason['num_violations']} pattern(s):")
-                    for j, (pattern, desc) in enumerate(zip(reason['patterns'], reason['descriptions'])):
-                        st.text(f"  • {pattern}")
+                    for j, (pattern, desc, decision) in enumerate(zip(reason['patterns'], reason['descriptions'], reason['decisions'])):
+                        st.text(f"  • [{decision}] {pattern}")
                         if desc:
                             st.caption(f"    {desc}")
                     if i < 4:
