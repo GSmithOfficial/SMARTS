@@ -796,8 +796,11 @@ elif mode == "Gen AI Filter":
                         passed.append(idx)
                     else:
                         failed.append(idx)
+                        # Get SMILES for the rejected molecule
+                        mol_smiles = Chem.MolToSmiles(mol) if mol else ''
                         rejection_reasons.append({
                             'molecule_idx': idx,
+                            'SMILES': mol_smiles,
                             'num_violations': len(caught_by),
                             'patterns': [p['smarts'] for p in caught_by],
                             'descriptions': [p['description'] for p in caught_by]
