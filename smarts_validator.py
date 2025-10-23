@@ -796,7 +796,7 @@ elif mode == "Validator":
                 if st.button("📥 Export Matches", use_container_width=True):
                     # Create export dataframe
                     match_indices = [idx for idx, _, _ in matches]
-                    export_df = results['mol_df'].iloc[match_indices].copy()
+                    export_df = results['mol_df'].loc[match_indices].copy()
                     
                     # Remove Mol column for CSV export
                     export_cols = [col for col in export_df.columns if col not in ['Mol', 'ROMol']]
@@ -991,7 +991,7 @@ elif mode == "Gen AI Filter":
         with col_e1:
             # Export passed molecules
             if len(results['passed']) > 0:
-                passed_mols = gen_ai_mols.iloc[results['passed']].copy()
+                passed_mols = gen_ai_mols.loc[results['passed']].copy()
                 
                 # Create export dataframe
                 if 'SMILES' in passed_mols.columns:
