@@ -7,6 +7,27 @@ import requests
 import base64
 import time
 
+# Display mapping functions
+def get_display_label(backend_value):
+    """Map backend decision values to user-facing labels"""
+    mapping = {
+        "Black": "🚫 Critical",
+        "Red": "🔴 Major",
+        "Amber": "🟠 Minor",
+        "Yellow": "🟡 Possible"
+    }
+    return mapping.get(backend_value, backend_value)
+
+def get_backend_value(display_label):
+    """Map user-facing labels to backend decision values"""
+    mapping = {
+        "🚫 Critical": "Black",
+        "🔴 Major": "Red",
+        "🟠 Minor": "Amber",
+        "🟡 Possible": "Yellow"
+    }
+    return mapping.get(display_label, display_label)
+
 # Page config
 st.set_page_config(page_title="SMARTS Toolkit", layout="wide", initial_sidebar_state="collapsed")
 
@@ -173,10 +194,10 @@ with st.expander("❓ Quick Guide & Resources", expanded=False):
         **Filter Patterns**: CSV with `SMARTS` + `Decision` columns
         
         ### 🚦 Traffic Light System
-        🔴 **Red** - Critical liabilities (always block)  
-        🟠 **Amber** - Cautionary flags (context-dependent)  
-        🟡 **Yellow** - Minor concerns (review recommended)  
-        🟢 **OK** - Acceptable patterns
+        🚫 **Critical** - Blacklisted patterns (never allow)  
+        🔴 **Major** - High priority concerns (careful review needed)  
+        🟠 **Minor** - Medium priority issues (context-dependent)  
+        🟡 **Possible** - Low priority flags (awareness only)
         """)
 
 # Mode selector
@@ -279,11 +300,11 @@ if mode == "Visualizer":
             with col3:
                 st.metric("Remaining", total - len(st.session_state.decisions))
             with col4:
-                red_count = sum(1 for d in st.session_state.decisions.values() if d == "Red")
-                st.metric("🔴 Red", red_count)
+                critical_count = sum(1 for d in st.session_state.decisions.values() if d == "Black")
+                st.metric("🚫 Critical", critical_count)
             with col5:
-                amber_count = sum(1 for d in st.session_state.decisions.values() if d == "Amber")
-                st.metric("🟠 Amber", amber_count)
+                major_count = sum(1 for d in st.session_state.decisions.values() if d == "Red")
+                st.metric("🔴 Major", major_count)
             
             st.write("")
             
@@ -362,39 +383,39 @@ if mode == "Visualizer":
                 current_decision = st.session_state.decisions.get(current, None)
                 
                 with col_btn1:
-                    red_type = "primary" if current_decision == "Red" else "secondary"
-                    if st.button("🔴 Red", type=red_type, use_container_width=True):
-                        st.session_state.decisions[current] = "Red"
+                    critical_type = "primary" if current_decision == "Black" else "secondary"
+                    if st.button("🚫 Critical", type=critical_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Black"
                         if current < total - 1:
                             st.session_state.current_idx = current + 1
                         st.rerun()
                 
                 with col_btn2:
-                    amber_type = "primary" if current_decision == "Amber" else "secondary"
-                    if st.button("🟠 Amber", type=amber_type, use_container_width=True):
-                        st.session_state.decisions[current] = "Amber"
+                    major_type = "primary" if current_decision == "Red" else "secondary"
+                    if st.button("🔴 Major", type=major_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Red"
                         if current < total - 1:
                             st.session_state.current_idx = current + 1
                         st.rerun()
                 
                 with col_btn3:
-                    yellow_type = "primary" if current_decision == "Yellow" else "secondary"
-                    if st.button("🟡 Yellow", type=yellow_type, use_container_width=True):
-                        st.session_state.decisions[current] = "Yellow"
+                    minor_type = "primary" if current_decision == "Amber" else "secondary"
+                    if st.button("🟠 Minor", type=minor_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Amber"
                         if current < total - 1:
                             st.session_state.current_idx = current + 1
                         st.rerun()
                 
                 with col_btn4:
-                    ok_type = "primary" if current_decision == "OK" else "secondary"
-                    if st.button("🟢 OK", type=ok_type, use_container_width=True):
-                        st.session_state.decisions[current] = "OK"
+                    possible_type = "primary" if current_decision == "Yellow" else "secondary"
+                    if st.button("🟡 Possible", type=possible_type, use_container_width=True):
+                        st.session_state.decisions[current] = "Yellow"
                         if current < total - 1:
                             st.session_state.current_idx = current + 1
                         st.rerun()
                 
                 if current_decision:
-                    st.success(f"Current decision: {current_decision}")
+                    st.success(f"Current decision: {get_display_label(current_decision)}")
                 
                 # Export results
                 if len(st.session_state.decisions) > 0:
@@ -840,12 +861,15 @@ elif mode == "Gen AI Filter":
         )
     
     # Filter severity selector
-    filter_severity = st.multiselect(
+    filter_severity_display = st.multiselect(
         "Apply patterns with these decisions:",
-        ["Red", "Amber", "Yellow", "OK"],
-        default=["Red", "Amber"],
-        help="Which traffic light categories to use as filters"
+        ["🚫 Critical", "🔴 Major", "🟠 Minor", "🟡 Possible"],
+        default=["🚫 Critical", "🔴 Major"],
+        help="Which severity categories to use as filters"
     )
+    
+    # Convert display labels to backend values
+    filter_severity = [get_backend_value(label) for label in filter_severity_display]
     
     # Load filter patterns
     filter_patterns = None
@@ -860,7 +884,9 @@ elif mode == "Gen AI Filter":
             else:
                 # Filter by selected severities
                 filter_patterns = filter_df[filter_df['Decision'].isin(filter_severity)]
-                st.info(f"✅ Loaded {len(filter_patterns)} filter patterns ({', '.join(filter_severity)})")
+                # Create display message with user-facing labels
+                display_labels = [get_display_label(sev) for sev in filter_severity]
+                st.info(f"✅ Loaded {len(filter_patterns)} filter patterns ({', '.join(display_labels)})")
                 
         except Exception as e:
             st.error(f"Error loading SMARTS: {str(e)}")
@@ -1035,7 +1061,8 @@ elif mode == "Gen AI Filter":
                 for i, reason in enumerate(results['rejection_reasons'][:5]):
                     st.write(f"**Molecule {reason['molecule_idx']}** - Caught by {reason['num_violations']} pattern(s):")
                     for j, (pattern, desc, decision) in enumerate(zip(reason['patterns'], reason['descriptions'], reason['decisions'])):
-                        st.text(f"  • [{decision}] {pattern}")
+                        display_decision = get_display_label(decision)
+                        st.text(f"  • [{display_decision}] {pattern}")
                         if desc:
                             st.caption(f"    {desc}")
                     if i < 4:
